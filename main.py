@@ -45,14 +45,23 @@ except ImportError:
 #micropython
 #microsnake.move_arrow_pressed = move_arrow_pressed
 class DCMotor():
-    def __init__(q):
-        q.velocity = 0
-        q.in1 = pyb.Pin('C9', pyb.Pin.OUT_PP)
-        q.in2 = pyb.Pin('C8', pyb.Pin.OUT_PP)
+    def __init__(q, in1, in2, tim_num, tim_channel, tim_pin, tim_freq=1000):
 
-        tim3 = pyb.Timer(3)
-        tim3.init(freq=100)        
-        q.en = tim3.channel(2, pyb.Timer.PWM, pin=pyb.Pin.board.PC7)
+        q.in1 = in1
+        q.in2 = in2
+        q.tim_num = tim_num
+        q.tim_channel = tim_channel
+        q.tim_pin = tim_pin
+        q.tim_freq = tim_freq
+
+        q.velocity = 0
+        q.in1 = pyb.Pin(in1, pyb.Pin.OUT_PP)
+        q.in2 = pyb.Pin(in2, pyb.Pin.OUT_PP)
+
+        q.tim = pyb.Timer(tim_num)
+        q.tim.init(freq=tim_freq)        
+#        q.en = q.tim.channel(tim_channel, pyb.Timer.PWM, pin=tim_pin)
+        q.en = q.tim.channel(tim_channel, pyb.Timer.PWM, pin=pyb.Pin(tim_pin))
         q.en.pulse_width_percent(0)
 
 #        MyMapperDict = { 'LeftMotorDir' : pyb.Pin.cpu.C12 }
@@ -119,13 +128,14 @@ class Machine():
         q.main_loop()
 
     def init_DCs(q):
-        q.dcs = []
+        q.dcms = []
 
 #        q.dcs.append(
-        dcm = DCMotor()
-        q.dcs.append(dcm)
-
-        q.dcm = dcm
+        dcm = DCMotor('C9', 'C8', 3, 2, 'C7')
+        q.dcms.append(dcm)
+        dcm = DCMotor('A9', 'A8', 3, 1, 'C6')        
+        q.dcms.append(dcm)        
+#        q.dcm = dcm
 
     def clear_lcds(q):
         for lcd in q.lcds:
@@ -145,7 +155,10 @@ class Machine():
                     vstep = -vstep
                 if vel == 0:
                     vstep = -vstep
-                q.dcm.vel(vel-100)
+
+#                q.dcm.vel(vel-100)
+                for dcm in q.dcms:
+                    dcm.vel(vel-100)
                 pass
             if a == 1000000:
                 print(str(a) + 'cycles')
