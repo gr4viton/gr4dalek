@@ -1,4 +1,11 @@
 move_arrow_pressed = None
+
+btn_left = None
+btn_right = None
+btn_up = None
+btn_down = None
+btns_pressed = None
+
 field = None
 line_max = None
 field_dict = None

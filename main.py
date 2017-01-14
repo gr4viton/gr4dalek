@@ -103,8 +103,9 @@ class DCMotor():
             elif vel < 0:
                 q.in1.value(0)
                 q.in2.value(1)
-            q.en.pulse_width_percent(abs(vel))
-        print(vel, ' = ', q.name, ' velocity')
+            if vel != q.velocity:
+                q.en.pulse_width_percent(abs(vel))
+#        print(vel, ' = ', q.name, ' velocity')
         q.velocity = vel
 
 class DifDrive():
@@ -138,9 +139,65 @@ class DifDrive():
         q.dc['RF'].vel(-value)
         q.dc['RB'].vel(-value)
 
-    def go(q, left, right):
+    def go(q, value, right=None):
+        if right is None:
+            left, right = value
+        else:
+            left = value
         q.left(left)
         q.right(right)
+
+class State():
+    def __init__(q, btns_state, vels, name):
+        q.btns_state = btns_state 
+        q.vels = vels
+        q.name = name
+
+class ButtonControl():
+    state = None
+    def __init__(q):
+        
+#r d l u
+        states_str = \
+"""0 0 0 0 0 0 idle
+0 0 0 1 100 100 front
+0 1 0 0 -100 -100 reverse 
+0 0 1 0 -100 100 leftonly 
+1 0 0 0 100 -100 righttonly 
+0 0 1 1 80 100 front_left
+1 0 0 1 100 80 front_right"""
+        states_list = states_str.split('\n')
+        q.states = []
+        for state_str in states_list:
+            btns_state = []
+            vels = []
+
+            state_list = state_str.split()
+
+            for i in range(4):
+                btns_state.append(int(state_list[i])==1)
+            for i in [4,5]:
+                vels.append(float(state_list[i]))
+
+            name = state_list[-1]
+
+            state = State(btns_state, vels, name)
+            print('state', btns_state, vels, name)
+            q.states.append(state)
+        
+        q.state = q.states[0]
+
+    def querry_state(q):
+        q.btns_pressed = shared_globals.btns_pressed
+        for state in q.states:
+            if state.btns_state == q.btns_pressed:
+#                print(state.btns_state, '?=', q.btns_pressed)                
+                if q.state != state:
+                    q.state = state                
+                    print(state.name, "= current state")                                
+
+
+
 
 class Machine():
     n = 0
@@ -155,8 +212,10 @@ class Machine():
             Machine.turned = True
             Machine.turn_time = act
         print('Machine.turned', Machine.turned)
-
+        
         # print(q.ac.xyz()) # MemoryError:
+
+
     def on_tim4(q):
         #lambda t:pyb.LED(3).toggle()
         try:
@@ -173,9 +232,11 @@ class Machine():
     def __init__(q):
 #        q.show_gpio()
         q.init_buttons()
-        q.init_leds()
-        q.init_DCs()
+        q.init_control()
 
+        q.init_leds()
+
+        q.init_DCs()
  #       q.init_lcd()
 
         q.main_loop()
@@ -183,6 +244,8 @@ class Machine():
     def init_DCs(q):
         q.dd = DifDrive()
 
+    def init_control(q):
+        q.control = ButtonControl()
 
     def clear_lcds(q):
         for lcd in q.lcds:
@@ -197,10 +260,22 @@ class Machine():
         st = [[100, 0], [0, 100], [100, 100]]
         vmax = len(st)
         #vmin, vmax = -62, 62
+
         while(1):
             a += 1
-            
+
+#            r,d,l,u = q.btns_pressed
+            q.control.querry_state()
+            state = q.control.state
+ #           print(state.vels)
+            q.dd.go(state.vels)
+
+
             if a % 500000 == 0:        
+                pass
+                print(state.name, "= current state")            
+            if 0:   
+
                 v = v+vstep
                 if v >= vmax:
                     v = vmin
@@ -239,10 +314,11 @@ class Machine():
 
         print('Initializing buttons:', pins)
 
-        q.on_btn_press = {}
+#        q.on_btn_press = {}
+        q.btn_extints = []
         q.btns = []
+        b_callbacks = []
 
-        bs = []
         mapper = range(len(pins))
 #        bs.append(lambda x: print(mapper[0], ': line', x))
 #        bs.append(lambda x: print(mapper[1], ': line', x))
@@ -251,24 +327,34 @@ class Machine():
 
         def on_arrow_button(mapped, line):
             shared_globals.move_arrow_pressed = mapped
-            print('on_arrow_button=', mapped)
+#            shared_globals.btns[mapped] = True
+            value = q.btns[mapped].value()
+            shared_globals.btns_pressed[mapped] = value == 0
+
+            #print('on_arrow_button=', mapped)
+#            print('btns (RDLU):', shared_globals.btns_pressed)
 #            print('mapped var', mapped, ': line', line)
 
-        # must not use for cycle (would be optimised out!)
-        bs.append(lambda x: on_arrow_button(mapper[0], x))
-        bs.append(lambda x: on_arrow_button(mapper[1], x))
-        bs.append(lambda x: on_arrow_button(mapper[2], x))
-        bs.append(lambda x: on_arrow_button(mapper[3], x))
+        # must not use for-loop (would be optimised out!)
+        b_callbacks.append(lambda x: on_arrow_button(mapper[0], x))
+        b_callbacks.append(lambda x: on_arrow_button(mapper[1], x))
+        b_callbacks.append(lambda x: on_arrow_button(mapper[2], x))
+        b_callbacks.append(lambda x: on_arrow_button(mapper[3], x))
 
 
         for i, pin_id in enumerate(pins):
 
-            new_callback = bs[i]
-            new_btn = pyb.ExtInt(pin_id, pyb.ExtInt.IRQ_FALLING, 
+            new_callback = b_callbacks[i]
+
+            btn = pyb.Pin(pin_id)
+
+            btn_exting = pyb.ExtInt(pin_id, pyb.ExtInt.IRQ_RISING_FALLING, 
                     pyb.Pin.PULL_UP, new_callback)
 
-            q.btns.append(new_btn)
-        
+            q.btn_extints.append(btn_exting)
+            q.btns.append(btn)
+
+        shared_globals.btns_pressed = [False, False, False, False]        
 
     def init_i2c(q, bus=2, role=I2C.MASTER, baudrate=115200, self_addr=0x42):
         q.i2c = I2C(bus)
