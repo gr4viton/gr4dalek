@@ -130,13 +130,17 @@ class DifDrive():
         print(len(q.dcms), 'motors initialized')
 
 
- #   def left(
+    def left(q, value):
+        q.dc['LF'].vel(value)
+        q.dc['LB'].vel(value)
+
+    def right(q, value):
+        q.dc['RF'].vel(-value)
+        q.dc['RB'].vel(-value)
 
     def go(q, left, right):
-        if vel < -100:
-            right = -100
-        elif vel > 100:
-            vel = 100
+        q.left(left)
+        q.right(right)
 
 class Machine():
     n = 0
@@ -177,24 +181,7 @@ class Machine():
         q.main_loop()
 
     def init_DCs(q):
-        q.dcms = []
-        q.dc = {}
-#        old = """aaa C9 C8 3 2 C7 1;bbb C10 C11 3 1 C6 1"""
-        tim_strs = """LF E0 E1 4 1 B6 1;RF E2 E3 4 2 B7 1;LB E0 E1 4 3 B8 0;RB E2 E3 4 4 B9 0"""
-        for tim_str in tim_strs.split(';'):
-            print(tim_str)
-            #name, in1, in2, tim, ch, tim_pin, dir_en = tim_str.split()
-            #dcm = DCMotor(name, in1, in2, tim, ch, tim_pin, dir_en)
-            tim_ls = tim_str.split()
-
-            for i in [3,4,6]:
-                tim_ls[i] = int(tim_ls[i])
-
-            print(tim_ls)                
-            dcm = DCMotor(*tim_ls)
-            q.dcms.append(dcm)        
-            q.dc[tim_ls[0]] = dcm
-        print(len(q.dcms), 'motors initialized')
+        q.dd = DifDrive()
 
 
     def clear_lcds(q):
@@ -203,60 +190,34 @@ class Machine():
 
     def main_loop(q):
         a = 0
+
         v = 0
-        vstep = 10
-#        mot = 0
-        mot = 0
-        mot_name = 'LB'
-        dcm = q.dcms[mot]
-        vmin, vmax = -100, 100
+        vmin, vmax = 0, 4
+        vstep = 1
+        st = [[100, 0], [0, 100], [100, 100]]
+        vmax = len(st)
         #vmin, vmax = -62, 62
         while(1):
             a += 1
-            if a % 500000 == 0:
-                q.dcms[mot].vel(70)
-                mot = mot+1
-                if mot >= len(q.dcms):
-                    mot = 0
-                print('motor =', mot)
-
-            #if a % 100000 == 0:
-            if 0:
-                #q.demo_lcd()
-                
+            
+            if a % 500000 == 0:        
                 v = v+vstep
-                if v > vmax:
-                    v = vmax
-                    vstep = -vstep
-                if v < vmin:
+                if v >= vmax:
                     v = vmin
-                    vstep = -vstep
-
-                    print('lower then min')
-                    print(mot)
-#                    mot += 1                    
-                    print(mot)                    
-                    if mot >= len(q.dcms):
-                        mot = 0
-
-                    for dcm in q.dcms:
-                        dcm.vel(0)
-                    print(mot)                        
-                    dcm = q.dcms[mot]
-                    dcm = q.dc[mot_name]
-
-                dcm.vel(v)
                 
-#                for dcm in q.dcms:
-#                    dcm.vel(vel-100)
+                l,r = st[v]
+                print('>> state', v, 'from', st)
+                q.dd.left(l)
+                q.dd.right(r)                
 
                 pass
+
             if a == 1000000:
                 print(str(a) + 'cycles')
-                print('mot', mot)
                 q.leds[0].toggle()
                 a = 0
             pass
+
         #pyb.wfi() # https://docs.micropython.org/en/latest/pyboard/library/pyb.html
         #pyb.standby()
         pyb.info()
