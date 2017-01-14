@@ -44,19 +44,37 @@ except ImportError:
 #move_arrow_pressed = None
 #micropython
 #microsnake.move_arrow_pressed = move_arrow_pressed
-class DCMotor():
-    def __init__(q, in1, in2, tim_num, tim_channel, tim_pin, tim_freq=1000):
 
-        q.in1 = in1
-        q.in2 = in2
-        q.tim_num = tim_num
-        q.tim_channel = tim_channel
+class FakePin():
+    def value(q, value):
+        pass
+
+class DCMotor():
+
+    def __init__( q, name, in1_pin, in2_pin, 
+            tim_num, tim_channel, tim_pin, 
+            dir_en=1, tim_freq=30000): 
+
+         #       print(q.__dict__)
+        q.name = name.strip()
+        q.in1_pin = in1_pin
+        q.in2_pin = in2_pin
+        q.tim_num = int(tim_num)
+        q.tim_channel = int(tim_channel)
         q.tim_pin = tim_pin
-        q.tim_freq = tim_freq
+        q.dir_en = int(dir_en)
+        q.tim_freq = float(tim_freq)
 
         q.velocity = 0
-        q.in1 = pyb.Pin(in1, pyb.Pin.OUT_PP)
-        q.in2 = pyb.Pin(in2, pyb.Pin.OUT_PP)
+        
+        if dir_en:
+            q.in1 = pyb.Pin(in1_pin, pyb.Pin.OUT_PP)
+            q.in2 = pyb.Pin(in2_pin, pyb.Pin.OUT_PP)
+            q.in1.value(0)
+            q.in2.value(0)
+        else:
+            q.in1 = FakePin()
+            q.in2 = FakePin()
 
         q.tim = pyb.Timer(tim_num)
         q.tim.init(freq=tim_freq)        
@@ -86,8 +104,39 @@ class DCMotor():
                 q.in1.value(0)
                 q.in2.value(1)
             q.en.pulse_width_percent(abs(vel))
-        print('velocity set to', vel)
+        print(vel, ' = ', q.name, ' velocity')
         q.velocity = vel
+
+class DifDrive():
+    def __init__(q):
+        q.init_dcs()
+
+    def init_dcs(q):
+        
+        q.dcms = []
+        q.dc = {}
+        tim_strs = """LF E0 E1 4 1 B6 1;RF E2 E3 4 2 B7 1;LB E0 E1 4 3 B8 0;RB E2 E3 4 4 B9 0"""
+        for tim_str in tim_strs.split(';'):
+            print(tim_str)
+            tim_ls = tim_str.split()
+
+            for i in [3,4,6]:
+                tim_ls[i] = int(tim_ls[i])
+
+            print(tim_ls)                
+            dcm = DCMotor(*tim_ls)
+            q.dcms.append(dcm)        
+            q.dc[tim_ls[0]] = dcm
+        print(len(q.dcms), 'motors initialized')
+
+
+ #   def left(
+
+    def go(q, left, right):
+        if vel < -100:
+            right = -100
+        elif vel > 100:
+            vel = 100
 
 class Machine():
     n = 0
@@ -129,13 +178,24 @@ class Machine():
 
     def init_DCs(q):
         q.dcms = []
+        q.dc = {}
+#        old = """aaa C9 C8 3 2 C7 1;bbb C10 C11 3 1 C6 1"""
+        tim_strs = """LF E0 E1 4 1 B6 1;RF E2 E3 4 2 B7 1;LB E0 E1 4 3 B8 0;RB E2 E3 4 4 B9 0"""
+        for tim_str in tim_strs.split(';'):
+            print(tim_str)
+            #name, in1, in2, tim, ch, tim_pin, dir_en = tim_str.split()
+            #dcm = DCMotor(name, in1, in2, tim, ch, tim_pin, dir_en)
+            tim_ls = tim_str.split()
 
-#        q.dcs.append(
-        dcm = DCMotor('C9', 'C8', 3, 2, 'C7')
-        q.dcms.append(dcm)
-        dcm = DCMotor('A9', 'A8', 3, 1, 'C6')        
-        q.dcms.append(dcm)        
-#        q.dcm = dcm
+            for i in [3,4,6]:
+                tim_ls[i] = int(tim_ls[i])
+
+            print(tim_ls)                
+            dcm = DCMotor(*tim_ls)
+            q.dcms.append(dcm)        
+            q.dc[tim_ls[0]] = dcm
+        print(len(q.dcms), 'motors initialized')
+
 
     def clear_lcds(q):
         for lcd in q.lcds:
@@ -143,26 +203,57 @@ class Machine():
 
     def main_loop(q):
         a = 0
-        vel = 0
-        vstep = 1
+        v = 0
+        vstep = 10
+#        mot = 0
+        mot = 0
+        mot_name = 'LB'
+        dcm = q.dcms[mot]
+        vmin, vmax = -100, 100
+        #vmin, vmax = -62, 62
         while(1):
             a += 1
+            if a % 500000 == 0:
+                q.dcms[mot].vel(70)
+                mot = mot+1
+                if mot >= len(q.dcms):
+                    mot = 0
+                print('motor =', mot)
 
-            if a % 10000 == 0:
+            #if a % 100000 == 0:
+            if 0:
                 #q.demo_lcd()
-                vel = (vel+vstep) % 200
-                if vel == 199:
+                
+                v = v+vstep
+                if v > vmax:
+                    v = vmax
                     vstep = -vstep
-                if vel == 0:
+                if v < vmin:
+                    v = vmin
                     vstep = -vstep
 
-#                q.dcm.vel(vel-100)
-                for dcm in q.dcms:
-                    dcm.vel(vel-100)
+                    print('lower then min')
+                    print(mot)
+#                    mot += 1                    
+                    print(mot)                    
+                    if mot >= len(q.dcms):
+                        mot = 0
+
+                    for dcm in q.dcms:
+                        dcm.vel(0)
+                    print(mot)                        
+                    dcm = q.dcms[mot]
+                    dcm = q.dc[mot_name]
+
+                dcm.vel(v)
+                
+#                for dcm in q.dcms:
+#                    dcm.vel(vel-100)
+
                 pass
             if a == 1000000:
                 print(str(a) + 'cycles')
-
+                print('mot', mot)
                 q.leds[0].toggle()
                 a = 0
             pass
