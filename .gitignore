@@ -2,7 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+# win
+*~
+# blend
+*.blend1
 # C extensions
 *.so
 
