@@ -332,7 +332,7 @@ class Machine():
             shared_globals.btns_pressed[mapped] = value == 0
 
             #print('on_arrow_button=', mapped)
-#            print('btns (RDLU):', shared_globals.btns_pressed)
+            print('btns (RDLU):', shared_globals.btns_pressed)
 #            print('mapped var', mapped, ': line', line)
 
         # must not use for-loop (would be optimised out!)
