@@ -96,7 +96,9 @@ class DCMotor():
         if vel == 0:
             q.in1.value(0)
             q.in2.value(0)
+#            q.dir_en = 0
         else:
+#            q.dir_en = 1
             if vel > 0:
                 q.in1.value(1)
                 q.in2.value(0)
@@ -108,6 +110,13 @@ class DCMotor():
 #        print(vel, ' = ', q.name, ' velocity')
         q.velocity = vel
 
+    def __str__(q):
+        ls = ['DCm[', q.name, 
+            '] in1,in2,tim,dir_en =[', 
+            q.in1_pin, ',', q.in2_pin, ',', q.tim_pin, ',', q.dir_en, 
+            ']=[', q.in1.value(), ',', q.in2.value(),'], vel=', q.velocity]
+        return ''.join([str(a) for a in ls])
+
 class DifDrive():
     def __init__(q):
         q.init_dcs()
@@ -116,7 +125,12 @@ class DifDrive():
         
         q.dcms = []
         q.dc = {}
-        tim_strs = """LF E0 E1 4 1 B6 1;RF E2 E3 4 2 B7 1;LB E0 E1 4 3 B8 0;RB E2 E3 4 4 B9 0"""
+        # name, in1_pin, in2_pin, tim_num, tim_channel, tim_pin, dir_en=1, tim_freq=30000
+        tim_strs = \
+"""LF E0 E1 4 1 B6 1
+RF E2 E3 4 2 B7 1
+LB E0 E1 4 3 B8 0
+RB E2 E3 4 4 B9 0"""
         for tim_str in tim_strs.split(';'):
             print(tim_str)
             tim_ls = tim_str.split()
@@ -131,21 +145,57 @@ class DifDrive():
         print(len(q.dcms), 'motors initialized')
 
 
-    def left(q, value):
+    def left_turn(q, value):
         q.dc['LF'].vel(value)
         q.dc['LB'].vel(value)
 
-    def right(q, value):
-        q.dc['RF'].vel(-value)
-        q.dc['RB'].vel(-value)
+    def right_turn(q, value):
+        q.dc['RF'].vel( value)
+        q.dc['RB'].vel( value)
 
-    def go(q, value, right=None):
+    def go_old(q, value, right=None):
         if right is None:
             left, right = value
         else:
             left = value
-        q.left(left)
-        q.right(right)
+        q.left_turn(left)
+        q.right_turn(right)
+
+
+class MecDrive():
+    def __init__(q):
+        q.init_dcs()
+
+    def init_dcs(q):
+        
+        q.dcms = []
+        q.dc = {}
+        # name, in1_pin, in2_pin, tim_num, tim_channel, tim_pin, dir_en=1, tim_freq=30000
+        tim_strs = \
+"""RF D7 D5 4 1 B6 1
+LF D3 D1 4 2 B7 1
+RB E0 E1 4 3 B8 1
+LB E2 E3 4 4 B9 1"""
+#E0 brown -> red D7 u front
+        for tim_str in tim_strs.split('\n'):
+            print(tim_str)
+            tim_ls = tim_str.split()
+
+            for i in [3,4,6]:
+                tim_ls[i] = int(tim_ls[i])
+
+            print(tim_ls)                
+            dcm = DCMotor(*tim_ls)
+            q.dcms.append(dcm)        
+            q.dc[tim_ls[0]] = dcm
+        print(len(q.dcms), 'motors initialized')
+
+
+    def go(q, vels):
+        for dc, vel in zip(q.dcms, vels):
+            #if vel != 0:
+            #    print(dc.name, vel)
+            dc.vel(vel)
 
 class State():
     def __init__(q, btns_state, vels, name):
@@ -159,14 +209,25 @@ class ButtonControl():
         
 #r d l u
         states_str = \
-"""0 0 0 0 0 0 idle
-0 0 0 1 100 100 front
-0 1 0 0 -100 -100 reverse 
-0 0 1 0 -100 100 leftonly 
-1 0 0 0 100 -100 righttonly 
-0 0 1 1 80 100 front_left
-1 0 0 1 100 80 front_right"""
+"""0 0 0 0 0 0 0 0 idle
+0 0 0 1 100 100 100 100 front
+0 0 1 0 -100 100 -100 100 turn_left
+0 1 0 0 -100 -100 -100 -100 reverse 
+1 0 0 0 100 -100 100 -100 turn_right
+0 0 1 1 100 -100 -100 100 go_left
+1 0 0 1 -100 100 100 -100 go_right"""
+
+#r d l u
+        states_str_test = \
+"""0 0 0 0 0 0 0 0 idle
+0 0 0 1 100 0 0 0 RF
+0 0 1 0 0 0 100 0 RB
+0 1 0 0 0 100 0 0 LF
+1 0 0 0 0 0 0 100 LB"""
+
+ #       states_str = states_str_test
         states_list = states_str.split('\n')
+
         q.states = []
         for state_str in states_list:
             btns_state = []
@@ -176,7 +237,7 @@ class ButtonControl():
 
             for i in range(4):
                 btns_state.append(int(state_list[i])==1)
-            for i in [4,5]:
+            for i in [4,5,6,7]:
                 vels.append(float(state_list[i]))
 
             name = state_list[-1]
@@ -194,8 +255,10 @@ class ButtonControl():
 #                print(state.btns_state, '?=', q.btns_pressed)                
                 if q.state != state:
                     q.state = state                
-                    print(state.name, "= current state")                                
+                    return state, q.state
+        return None
 
+                    
 
 
 
@@ -242,7 +305,7 @@ class Machine():
         q.main_loop()
 
     def init_DCs(q):
-        q.dd = DifDrive()
+        q.dd = MecDrive()
 
     def init_control(q):
         q.control = ButtonControl()
@@ -250,6 +313,13 @@ class Machine():
     def clear_lcds(q):
         for lcd in q.lcds:
             lcd.clear()
+
+    def state_changed(q, old_state, state):
+        print(state.name, "= current state")     
+        if state.name != 'idle':
+            print('state_vels =', state.vels)
+            for dc in q.dd.dcms:
+                print(dc)
 
     def main_loop(q):
         a = 0
@@ -260,32 +330,25 @@ class Machine():
         st = [[100, 0], [0, 100], [100, 100]]
         vmax = len(st)
         #vmin, vmax = -62, 62
-
+        state = None
         while(1):
             a += 1
 
 #            r,d,l,u = q.btns_pressed
-            q.control.querry_state()
+            change = q.control.querry_state()
             state = q.control.state
+                
  #           print(state.vels)
+ 
             q.dd.go(state.vels)
 
+
+            if change is not None:
+                q.state_changed(*change)
 
             if a % 500000 == 0:        
                 pass
                 print(state.name, "= current state")            
-            if 0:   
-
-                v = v+vstep
-                if v >= vmax:
-                    v = vmin
-                
-                l,r = st[v]
-                print('>> state', v, 'from', st)
-                q.dd.left(l)
-                q.dd.right(r)                
-
-                pass
 
             if a == 1000000:
                 print(str(a) + 'cycles')
