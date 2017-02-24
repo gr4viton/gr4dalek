@@ -10,18 +10,15 @@ class GamePadButton():
             self.dir = [int(dir1), int(dir2)]
         self.state = 0
         print(self.state) 
-        a = self.state
-        print(a)
 
-    def __getattr__(self, name, value):
-        print(name, value)
-        if name == 'state':
+    def __getattribut__(self, attr):
+        if attr == 'state':
             if self.state == 0:
                 return 'Released'
             else:
                 return 'Pressed'
         else:
-            return self.__dict__[name]
+            return self.__dict__[attr]
             #setattr(self, name, value)
             #super(GamePadButton, self).__setattr__(name, value)
 
