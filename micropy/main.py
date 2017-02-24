@@ -195,7 +195,7 @@ LB E2 E3 4 4 B9 1"""
         for dc, vel in zip(q.dcms, vels):
             #if vel != 0:
             #    print(dc.name, vel)
-            dc.vel(vel)
+            dc.vel(vel*0.8)
 
 class State():
     def __init__(q, btns_state, vels, name):
@@ -340,10 +340,10 @@ class Machine():
                 
  #           print(state.vels)
  
-            q.dd.go(state.vels)
 
 
             if change is not None:
+                q.dd.go(state.vels)
                 q.state_changed(*change)
 
             if a % 500000 == 0:        
