@@ -11,23 +11,11 @@ class GamePadButton():
         self.state = 0
         print(self.state) 
 
-    def __getattribut__(self, attr):
-        if attr == 'state':
-            if self.state == 0:
-                return 'Released'
-            else:
-                return 'Pressed'
-        else:
-            return self.__dict__[attr]
-            #setattr(self, name, value)
-            #super(GamePadButton, self).__setattr__(name, value)
-
-        
     def __repr__(self):
         return ''.join([str(word) for word in ['type=', self.kind,
-                        '|add=',self.add,
-                        '|name=',self.name,
-                        '|state=', self.state]])
+                        ', add= ',self.add,
+                        ', name="',self.name,
+                        '", state= ', self.state]])
            
 class GamePadControler():
     def __init__(self):
