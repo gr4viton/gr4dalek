@@ -1,13 +1,57 @@
 import sys
 
-class GamePadButton():
+class GamePadSwButton(object):
+    hw_btn_attr_names = ['kind', 'add', 'data']
+
+    def __init__(self, abbreviation, name, hw_btn, trigger_data, delim=','):
+        self.hw_btn = hw_btn
+        if type(trigger_data) is str:
+            x = trigger_data.split(delim)
+            trigger_data = [int(dat) for dat in x]
+        self.trigger_data = trigger_data
+        self.state = False
+        
+    def __getattr__(self, name):
+
+        print( "getting `{}`".format(str(name)))
+        object.__getattribute__(self, name)
+
+    def __getattr__(self, name):
+        print
+        if name in self.hw_btn_attr_names:
+            return self.hw_btn.__dict__[name]
+        elif name == 'state':
+            print('NAME IS STATE')
+            self.update_state()
+            return self.state
+
+        else:
+            return self.__dict__[name]
+            
+    def update_state(self):
+        if self.trigger_data == self.hw_btn.data:
+            self.state = True
+        else:
+            self.state = False
+
+    def __repr___(self):
+        self.update_state()
+        return ''.join([str(word) for word in ['type=', self.kind,
+                        ', add= ',self.add,
+                        ', name="',self.name,
+                        '", state= ', self.state,
+                        ', hwdata=', self.data,
+                        ', trigger_data=', self.trigger_data]])
+           
+
+class GamePadHwButton():
     
-    def __init__(self, address, kind, abbreviation,name):
+    def __init__(self, address, kind, abbreviation, name):
         self.abbr = abbreviation
         self.name = name
         self.add = address
         self.kind = kind
-        self.state = 0
+        self.state = False
         self.data = None
 
     def update(self, data):
@@ -55,20 +99,24 @@ class GamePadControler():
                             for address, *data in x}
         print(self.states)
 
-        self.btns = {key : GamePadButton(key, *value) 
+        self.hw_btns = {key : GamePadHwButton(key, *value) 
                 for key, value in self.states.items()}
 
-        named = {btn.abbr : btn for btn in self.btns.values()}
-        self.btns.update(named)
+        self.btns = {btn.abbr : btn for btn in self.hw_btns.values()}
+        sw_btns = \
+"""up:UP arrow:updown:1,128
+down:DOWN arrow:updown:255,127
+left:LEFT arrow:leftright:1,128
+right:RIGHT arrow:leftright:255,127"""
 
-#        for key, value in self.states.items():
-#            print(key, value)
-#            btn = GamePadButton(key, *value) 
-#            self.btns.append(btn)
-#            print(btn)
+        x = [line.split(':') for line in sw_btns.split('\n')]
+        self.btns.update({abbr : GamePadSwButton(abbr, *values)
+                            for abbr, *values in x})
+#       up = GamePadSwButton('up','UP arrow', self.btns['updown'], tuple(1,128))
 
-        print(self.btns)
-        
+#        print(self.hw_btns)
+#        print(self.btns)
+        [print(btn) for btn in self.btns]
         
     def open(self):
         self.pipe = open('/dev/input/js0', 'rb') #open joystick 
@@ -76,18 +124,21 @@ class GamePadControler():
     
     def update(self):
         self.readData()
-        print('>>>>> GOT NEW ACTION')
-        print(self.state)
+        print('>>>>> GOT NEW ACTION ', self.state)
         add = tuple(self.state[6:8])
-        data = self.state[4:6]
+        data = tuple(self.state[4:6])
         print('data', data)
         print('address', add)
         
-        if self.btns.get(add) is not None:
-            self.btns[add].update(data)
-            print(self.btns[add])
+        if self.hw_btns.get(add) is not None:
+            self.hw_btns[add].update(data)
+            print(self.hw_btns[add])
 
-        print(self.btns['updown'].state)
+        #print(self.btns['up'])
+        print(self.btns['up'].state)
+        print(self.btns['down'].state)
+        print(self.btns['left'].state)
+        print(self.btns['right'].state)
 
     def readData(self):
         action = []
