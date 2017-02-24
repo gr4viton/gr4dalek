@@ -3,39 +3,23 @@ import sys
 class GamePadSwButton(object):
     hw_btn_attr_names = ['kind', 'add', 'data']
 
-    def __init__(self, abbreviation, name, hw_btn, trigger_data, delim=','):
+    def __init__(self, abbreviation, name, hw_btn, trigger_data):
         self.hw_btn = hw_btn
-        if type(trigger_data) is str:
-            x = trigger_data.split(delim)
-            trigger_data = [int(dat) for dat in x]
         self.trigger_data = trigger_data
-        self.state = False
-        
-    def __getattr__(self, name):
+        self._state = False
+     
+    @property
+    def state(self):
+        self.update_state()
+        return self._state
 
-        print( "getting `{}`".format(str(name)))
-        object.__getattribute__(self, name)
-
-    def __getattr__(self, name):
-        print
-        if name in self.hw_btn_attr_names:
-            return self.hw_btn.__dict__[name]
-        elif name == 'state':
-            print('NAME IS STATE')
-            self.update_state()
-            return self.state
-
-        else:
-            return self.__dict__[name]
-            
     def update_state(self):
         if self.trigger_data == self.hw_btn.data:
-            self.state = True
+            self._state = True
         else:
-            self.state = False
+            self._state = False
 
-    def __repr___(self):
-        self.update_state()
+    def __str___(self):
         return ''.join([str(word) for word in ['type=', self.kind,
                         ', add= ',self.add,
                         ', name="',self.name,
@@ -110,13 +94,15 @@ left:LEFT arrow:leftright:1,128
 right:RIGHT arrow:leftright:255,127"""
 
         x = [line.split(':') for line in sw_btns.split('\n')]
-        self.btns.update({abbr : GamePadSwButton(abbr, *values)
-                            for abbr, *values in x})
-#       up = GamePadSwButton('up','UP arrow', self.btns['updown'], tuple(1,128))
-
+        self.btns.update({abbr : GamePadSwButton(
+                                abbr, name, self.btns[hw_btn], 
+                                [int(trig) for trig in trigger.split(',')]
+                                )
+                            for abbr, name, hw_btn, trigger in x})
+#       self.up = GamePadSwButton('up','UP arrow', self.btns['updown'], [1,128])
 #        print(self.hw_btns)
 #        print(self.btns)
-        [print(btn) for btn in self.btns]
+        [prrint(str(btn)) for btn in self.btns.values()]
         
     def open(self):
         self.pipe = open('/dev/input/js0', 'rb') #open joystick 
