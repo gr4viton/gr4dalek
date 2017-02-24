@@ -9,6 +9,11 @@ class GamePadButton():
         if dir1 is not None:
             self.dir = [int(dir1), int(dir2)]
         self.state = 0
+        self.data = None
+
+    def update(self, data):
+        self.data = data
+        self.state = sum(data) > 0
 
     def __repr__(self):
         return ''.join([str(word) for word in ['type=', self.kind,
@@ -71,13 +76,19 @@ class GamePadControler():
     
     def update(self):
         self.readData()
+        print('>>>>> GOT NEW ACTION')
         print(self.state)
-        add = self.state[6:8]
+        add = tuple(self.state[6:8])
         data = self.state[4:6]
         print('data', data)
         print('address', add)
         
-#        self.btns[
+        if add in self.longer_addresses:
+            add = tuple(add) + tuple(data)
+
+        if self.btns.get(add) is not None:
+            self.btns[add].update(data)
+            print(self.btns[add])
 
     def readData(self):
         action = []
