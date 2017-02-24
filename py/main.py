@@ -1,6 +1,6 @@
 import sys
 
-class GamePadSwButton(object):
+class GamePadSwHotkey(object):
     hw_btn_attr_names = ['kind', 'add', 'data']
 
     def __init__(self, abbreviation, name, hw_btn, trigger_data):
@@ -21,10 +21,10 @@ class GamePadSwButton(object):
     def __getattr__(self, name):
         if name in self.hw_btn_attr_names:
             return self.hw_btn.__dict__[name]
-        elif name == 'state':
-            print('NAME IS STATE')
-            self.update_state()
-            return self.state
+#        elif name == 'state':
+#            print('NAME IS STATE')
+#            self.update_state()
+#            return self.state
         else:
             return self.__dict__[name]
 
@@ -35,56 +35,73 @@ class GamePadSwButton(object):
             self._state = False
 
     def __str__(self):
-        return ''.join([str(word) for word in ['type=', self.kind,
-                        ', add= ',self.add,
-                        ', name="',self.name,
-                        '", state= ', self.state,
+        return ''.join([str(word) for word in [
+                        self.kind,'=hwa',self.add,
+                        '= ', self.abbr, ' = ', self.name,
+                        ', state= ', self.state,
                         ', hwdata=', self.data,
                         ', trigger_data=', self.trigger_data]])
            
-class GamePadSwStick():
-    def __init__(self, abbreviation, name, hw_btn1, hw_btn2):
+class GamePadSwChildControl():
+    def __init__(self, abbreviation, name, parents):
         self.abbr = abbreviation
         self.name = name
-        self.hw1 = hw_btn1
-        self.hw2 = hw_btn2
-        self._dir = [0,0]
-
-    @property
-    def dir(self):
-        self._dir = [self.hw1.data, self.hw2.data]
-        return self._dir
+        self.data = [None, None]
+        self.parent_names = parents
 
     def __str__(self):
         return ''.join([str(word) for word in [
-                        self.abbr,' = ',self.name, ' = ', self.dir
+                        self.abbr,' = ',self.name, ' = ', self.data
                         ]])
 
 
 class GamePadHwButton():
     
-    def __init__(self, address, kind, abbreviation, name):
+    def __init__(self, address, kind, abbreviation, name, child=None, trigger=None):
         self.abbr = abbreviation
         self.name = name
         self.add = address
         self.kind = kind
         self.state = False
-        self.data = None
+        self.child = self.trigger = self.data = None
+        if child is not None:
+            self.child = child
+            if trigger is not None:
+                self.trigger = trigger
+
+
 
     def update(self, data):
         self.data = data
         self.state = sum(data) > 0
+        if self.child is not None:
+            if self.trigger is not None:
+                if self.data == self.trigger:
+                    self.child.data = self.data
+            else:
+                self.child.data = self.data
 
     def __repr__(self):
-        return ''.join([str(word) for word in ['type=', self.kind,
-                        ', add= ',self.add,
-                        ', name="',self.name,
-                        '", state= ', self.state,
+        return ''.join([str(word) for word in [
+                        self.kind,'=hwa',self.add,
+                        '= ', self.abbr, ' = ', self.name,
+                        ', state= ', self.state,
                         ', data=', self.data]])
            
 class GamePadControler():
     def __init__(self):
         self.open()
+
+
+        sw_sticks = \
+"""leftstick:Left stick:LVstick:LHstick
+rightstick:Right stick:RVstick:RHstick"""
+
+        x = [line.split(':') for line in sw_sticks.split('\n')]
+        self.sticks = {}
+        self.sticks.update({abbr :GamePadSwChildControl(abbr, name, hw_btn_names) 
+                                for abbr, name, *hw_btn_names in x})
+
         actions = \
 """
 1,0:b:A:A button
@@ -96,10 +113,10 @@ class GamePadControler():
 1,10:b:select:SELECT button
 1,11:b:start:START button
 
-2,0:s:LHstick:Left horizontal stick
-2,1:s:LVstick:Left vertical stick
-2,2:s:RHstick:Right horizontal stick
-2,3:s:RVstick:Right vertical stick
+2,0:s:LHstick:Left horizontal stick:leftstick
+2,1:s:LVstick:Left vertical stick:leftstick
+2,2:s:RHstick:Right horizontal stick:rightstick
+2,3:s:RVstick:Right vertical stick:rightstick
 
 2,4:b:R2:R2 button
 2,5:b:L2:L2 button
@@ -127,26 +144,13 @@ left:LEFT arrow:leftright:1,128
 right:RIGHT arrow:leftright:255,127"""
 
         x = [line.split(':') for line in sw_btns.split('\n')]
-        self.btns.update({abbr : GamePadSwButton(
+        self.btns.update({abbr : GamePadSwHotkey(
                                 abbr, name, self.btns[hw_btn], 
                                 [int(trig) for trig in trigger.split(',')]
                                 )
                             for abbr, name, hw_btn, trigger in x})
 
-        sw_sticks = \
-"""leftstick:Left stick:LVstick:LHstick
-rightstick:Right stick:RVstick:RHstick"""
 
-        x = [line.split(':') for line in sw_sticks.split('\n')]
-        self.sticks = {}
-        self.sticks.update({abbr : GamePadSwStick(
-                                    abbr, name, self.btns[hw1], self.btns[hw2]
-                                    ) 
-                                for abbr, name, hw1, hw2 in x})
-
-#       self.up = GamePadSwButton('up','UP arrow', self.btns['updown'], [1,128])
-#        print(self.hw_btns)
-#        print(self.btns)
         [print(str(btn)) for btn in self.btns.values()]
         [print(str(stc)) for stc in self.sticks.values()]
     def open(self):
@@ -166,10 +170,10 @@ rightstick:Right stick:RVstick:RHstick"""
             print(self.hw_btns[add])
 
         #print(self.btns['up'])
-        print(self.btns['up'])
-        print(self.btns['down'])
-        print(self.btns['left'])
-        print(self.btns['right'])
+   #     print(self.btns['up'])
+   #     print(self.btns['down'])
+   #     print(self.btns['left'])
+   #     print(self.btns['right'])
 
         print(self.sticks['leftstick'])
         print(self.sticks['rightstick'])
