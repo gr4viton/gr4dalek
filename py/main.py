@@ -9,7 +9,6 @@ class GamePadButton():
         if dir1 is not None:
             self.dir = [int(dir1), int(dir2)]
         self.state = 0
-        print(self.state) 
 
     def __repr__(self):
         return ''.join([str(word) for word in ['type=', self.kind,
@@ -22,41 +21,46 @@ class GamePadControler():
         self.open()
         actions = \
 """
-1,0,b,A button
-1,1,b,B button
-1,3,b,X button
-1,4,b,Y button
-1,6,b,L1 button
-1,7,b,R1 button
-1,10,b,SELECT button
-1,11,b,START button
+1,0:b:A button
+1,1:b:B button
+1,3:b:X button
+1,4:b:Y button
+1,6:b:L1 button
+1,7:b:R1 button
+1,10:b:SELECT button
+1,11:b:START button
 
-2,0,s,Left horizontal stick
-2,1,s,Left vertical stick
-2,2,s,Right horizontal stick
-2,3,s,Right vertical stick
+2,0:s:Left horizontal stick
+2,1:s:Left vertical stick
+2,2:s:Right horizontal stick
+2,3:s:Right vertical stick
 
-2,4,b,R2 button
-2,5,b,L2 button
+2,4:b:R2 button
+2,5:b:L2 button
 
-2,6,a,Left arrow,1,128
-2,6,a,Right arrow,255,127
-2,6,a,Up arrow,1,128
-2,7,a,Down arrow,255,127
+2,6,1,128:a:Left arrow
+2,6,255,127:a:Right arrow
+2,6,1,128:a:Up arrow
+2,7,255,127:a:Down arrow
 
 """
+        self.longer_addresses = [(2,6), (2,7)]
+
+        minimal_line = '1,1:b:A'
         x = [line for line in actions.split('\n')]
-        x = [line.split(',') for line in x if len(line)>4]
-        self.states = {(int(add1),int(add2)):list(data) 
-                            for add1, add2, *data in x}
+        x = [line.split(':') for line in x if len(line)>=len(minimal_line)]
+        self.states = {tuple([int(add) for add in address.split(',')]):list(data) 
+                            for address, *data in x}
         print(self.states)
 
-        self.btns = []
-        for key, value in self.states.items():
-            print(key, value)
-            btn = GamePadButton(key, *value) 
-            self.btns.append(btn)
-            print(btn)
+        self.btns = {key : GamePadButton(key, *value) 
+                for key, value in self.states.items()}
+
+#        for key, value in self.states.items():
+#            print(key, value)
+#            btn = GamePadButton(key, *value) 
+#            self.btns.append(btn)
+#            print(btn)
 
         print(self.btns)
         
@@ -73,6 +77,7 @@ class GamePadControler():
         print('data', data)
         print('address', add)
         
+#        self.btns[
 
     def readData(self):
         action = []
