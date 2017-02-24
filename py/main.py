@@ -93,13 +93,13 @@ class GamePadControler():
         self.open()
 
 
-        sw_sticks = \
+        sw_childs = \
 """leftstick:Left stick:LVstick:LHstick
 rightstick:Right stick:RVstick:RHstick"""
 
-        x = [line.split(':') for line in sw_sticks.split('\n')]
-        self.sticks = {}
-        self.sticks.update({abbr :GamePadSwChildControl(abbr, name, hw_btn_names) 
+        x = [line.split(':') for line in sw_childs.split('\n')]
+        self.childs = {}
+        self.childs.update({abbr :GamePadSwChildControl(abbr, name, hw_btn_names) 
                                 for abbr, name, *hw_btn_names in x})
 
         actions = \
@@ -132,11 +132,16 @@ rightstick:Right stick:RVstick:RHstick"""
         self.states = {tuple([int(add) for add in address.split(',')]):list(data) 
                             for address, *data in x}
         print(self.states)
-
-        self.hw_btns = {key : GamePadHwButton(key, *value) 
-                for key, value in self.states.items()}
+        
+        
+        self.hw_btns = {}
+        for key, value in self.states.items():
+            if len(value) > 3: # child 
+                value[3] = self.childs[value[3]]
+            self.hw_btns.update({key: GamePadHwButton(key, *value)})
 
         self.btns = {btn.abbr : btn for btn in self.hw_btns.values()}
+
         sw_btns = \
 """up:UP arrow:updown:1,128
 down:DOWN arrow:updown:255,127
@@ -152,7 +157,7 @@ right:RIGHT arrow:leftright:255,127"""
 
 
         [print(str(btn)) for btn in self.btns.values()]
-        [print(str(stc)) for stc in self.sticks.values()]
+        [print(str(stc)) for stc in self.childs.values()]
     def open(self):
         self.pipe = open('/dev/input/js0', 'rb') #open joystick 
         action = []
@@ -175,8 +180,8 @@ right:RIGHT arrow:leftright:255,127"""
    #     print(self.btns['left'])
    #     print(self.btns['right'])
 
-        print(self.sticks['leftstick'])
-        print(self.sticks['rightstick'])
+        print(self.childs['leftstick'])
+        print(self.childs['rightstick'])
         
     def readData(self):
         action = []
