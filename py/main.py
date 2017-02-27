@@ -1,5 +1,13 @@
 import sys
 
+import os
+
+def cls():
+    os.system('cls' if os.name=='nt' else 'clear')
+
+# now, to clear the screen
+cls()
+
 class GamePadSwHotkey(object):
     hw_btn_attr_names = ['kind', 'add', 'data']
 
@@ -92,7 +100,6 @@ class GamePadControler():
     def __init__(self):
         self.open()
 
-
         sw_childs = \
 """leftstick:Left stick:LVstick:LHstick
 rightstick:Right stick:RVstick:RHstick"""
@@ -163,7 +170,8 @@ right:RIGHT arrow:leftright:255,127"""
         action = []
     
     def update(self):
-        self.readData()
+        self.read_data()
+        cls()
         print('>>>>> GOT NEW ACTION ', self.state)
         add = tuple(self.state[6:8])
         data = tuple(self.state[4:6])
@@ -183,7 +191,10 @@ right:RIGHT arrow:leftright:255,127"""
         print(self.childs['leftstick'])
         print(self.childs['rightstick'])
         
-    def readData(self):
+
+
+        
+    def read_data(self):
         action = []
         stop = 1
         while stop == 1:
