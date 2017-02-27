@@ -21,30 +21,36 @@ def show_direction(direction):
     s = 8
     decimal_points = 2
     dp = 10^decimal_points
-    h = ceil(256/s)
-    w = ceil(256/s)
+    max_y = ceil(256/s)
+    max_x = ceil(256/s)
 
+    half_y = round(max_y/2)
+    half_x = round(max_x/2)
+
+    print('directionXYdeg' , direction)
     if direction is None:
         return
-    dx, dy = direction
-    dx = (dy*256 + dx)/256
-    
-    dy = 256/2
+
+    dx, dy = [ d* maxd for d, maxd in zip(direction[0:2], [half_x, half_y]) ]    
 
     if dx is None and dy is None:
         return
 
-    sdx = round(dx/s)
-    sdy = round(dy/s)
+    if len(direction)<3:
+        rad = atan2(float(dy), float(dx))
+        deg = degrees(rad)
+    else:
+        deg = direction[2]
+        rad = radians(deg)
 
-    rad = atan2(float(dy), float(dx))
-    deg = degrees(rad)
+    sdx = round(dx + half_x)
+    sdy = round(dy + half_y)
 
-    for x in range(0, h):
-        for y in range(0, w):
-            if x==0 or x==w-1 or y==0 or y==h-1:
+    for x in range(0, max_x):
+        for y in range(0, max_y):
+            if x==0 or x==max_x-1 or y==0 or y==max_y-1:
                 can.set(x,y)
-            if x==h/2 and y==h/2:
+            if x==half_x and y==half_y:
                 can.set(x,y)
 
             if x==sdx and y==sdy:
@@ -53,7 +59,9 @@ def show_direction(direction):
 
     print(can.frame())
     print('angle = ', round(deg*dp)/dp, ' deg = ', round(rad*dp)/dp, ' rad')
-    print('dir[x,y] = ', dx, ', ', dy)
+    print('dx,dy] = ', dx, ', ', dy)
+    print('sdx,sdy] = ', sdx, ', ', sdy)
+
 if __name__ == '__main__':
     print('Hey')
     gpc = GPC()
@@ -62,6 +70,7 @@ if __name__ == '__main__':
 
         data = gpc.childs['rightstick'].data
         data = gpc.btns['LHstick'].data
+        data = gpc.btns['leftstick'].fdata
         show_direction(data)
 
         
