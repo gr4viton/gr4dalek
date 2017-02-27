@@ -27,9 +27,10 @@ def show_direction(direction):
     if direction is None:
         return
     dx, dy = direction
-    dx = (dx + dy)/2
+    dx = (dy*256 + dx)/256
     
-    dy = 0
+    dy = 256/2
+
     if dx is None and dy is None:
         return
 
