@@ -159,7 +159,7 @@ right:RIGHT arrow:leftright:255,127"""
         [print(str(btn)) for btn in self.btns.values()]
         [print(str(stc)) for stc in self.childs.values()]
     def open(self):
-        self.pipe = open('/dev/input/js0', 'rb') #open joystick 
+        self.pipe = open('/dev/input/js0', 'rb') #open joystick
         action = []
     
     def update(self):
