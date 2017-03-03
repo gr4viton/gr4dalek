@@ -81,6 +81,7 @@ class GamePadHwButton():
         self.kind = kind
         self.state = False
         self.child = self.trigger = self.data = None
+        self.ffunc = None
         if format_function is not None:
             if type(format_function) is str:
                 format_function = GamePadControler.format_funcs[format_function]
