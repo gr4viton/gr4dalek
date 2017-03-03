@@ -156,6 +156,7 @@ class GamePadControler():
     format_funcs = {'format_2byte': format_2byte}
 
     def __init__(self):
+        self.info = 1
         self.open()
 
         sw_childs = \
@@ -231,14 +232,20 @@ right:RIGHT arrow:leftright:format_trigger_downright_arrows"""
         self.pipe = open('/dev/input/js0', 'rb') #open joystick
         action = []
     
-    def update(self):
+    def print(self, *args):
+        if self.info > 0:
+            print(*args)
+
+    def update(self, info=None):
+        if info is not None:
+            self.info = info
         self.read_data()
         cls()
-        print('>>>>> GOT NEW ACTION ', self.state)
+        self.print('>>>>> GOT NEW ACTION ', self.state)
         add = tuple(self.state[6:8])
         data = tuple(self.state[4:6])
-        print('data', data)
-        print('address', add)
+        self.print('data', data)
+        self.print('address', add)
         
         if self.hw_btns.get(add) is not None:
             self.hw_btns[add].update(data)
@@ -250,8 +257,8 @@ right:RIGHT arrow:leftright:format_trigger_downright_arrows"""
    #     print(self.btns['left'])
    #     print(self.btns['right'])
 
-        print(self.childs['leftstick'])
-        print(self.childs['rightstick'])
+        self.print(self.childs['leftstick'])
+        self.print(self.childs['rightstick'])
         
 
 

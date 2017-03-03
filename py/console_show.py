@@ -12,66 +12,87 @@ for x in range(0, 1800, 1):
         
 print(c.frame())
 
-can = Canvas()
-def show_direction(direction):
-#    print(dir(can))
-    can.clear()
+
+class DirectionView():
+
+    def __init__(self):
+        self.can = Canvas()
+        self.can.clear()
+
+        s = 8
+        decimal_points = 2
+        self.dp = 10^decimal_points
+
+        max_ = 256
+        max_y = ceil(max_/s)
+        max_x = ceil(max_/s)
+
+        half_y = round(max_y/2)
+        half_x = round(max_x/2)
+
+        half_dx = round(half_x * 0.8)
+        half_dy = round(half_y * 0.8)
+
+        self.half_d = [half_dx, half_dy]
+
+        self.half_x, self.half_y = half_x, half_y
+
+        self.sdx, self.sdy = (0, 0)
+
+        for x in range(0, max_x):
+            for y in range(0, max_y):
+                if x==0 or x==max_x-1 or y==0 or y==max_y-1:
+                    self.can.set(x,y)
+                if x==half_x and y==half_y:
+                    self.can.set(x,y)
     
+        xs = [ 1, -1, 1, -1, 0, 1, 0, -1]
+        ys = [ 1, +1,-1, -1, 1, 0,-1,  0]
+        self.zip_xs_ys = list(zip(xs,ys))
+        
 
-    s = 8
-    decimal_points = 2
-    dp = 10^decimal_points
-    max_y = ceil(256/s)
-    max_x = ceil(256/s)
+    def show_direction(self, direction):
+#        print(dir(self.can))
+        [self.can.unset(self.sdx + x, self.sdy + y) for x, y in self.zip_xs_ys]
 
-    half_y = round(max_y/2)
-    half_x = round(max_x/2)
+        if direction is None:
+            return
+        dx, dy = [ d* maxd for d, maxd in zip(direction[0:2], self.half_d) ]    
 
-    print('directionXYdeg' , direction)
-    if direction is None:
-        return
+        if dx is None and dy is None:
+            return
 
-    dx, dy = [ d* maxd for d, maxd in zip(direction[0:2], [half_x, half_y]) ]    
+        if len(direction)<3:
+            rad = atan2(float(dy), float(dx))
+            deg = degrees(rad)
+        else:
+            deg = direction[2]
+            rad = radians(deg)
 
-    if dx is None and dy is None:
-        return
-
-    if len(direction)<3:
-        rad = atan2(float(dy), float(dx))
-        deg = degrees(rad)
-    else:
-        deg = direction[2]
-        rad = radians(deg)
-
-    sdx = round(dx + half_x)
-    sdy = round(dy + half_y)
-
-    for x in range(0, max_x):
-        for y in range(0, max_y):
-            if x==0 or x==max_x-1 or y==0 or y==max_y-1:
-                can.set(x,y)
-            if x==half_x and y==half_y:
-                can.set(x,y)
-
-            if x==sdx and y==sdy:
-                can.set(x,y)
-
-
-    print(can.frame())
-    print('angle = ', round(deg*dp)/dp, ' deg = ', round(rad*dp)/dp, ' rad')
-    print('dx,dy] = ', dx, ', ', dy)
-    print('sdx,sdy] = ', sdx, ', ', sdy)
+        self.sdx = round(dx + self.half_x)
+        self.sdy = round(dy + self.half_y)
+            
+        #self.can.set(self.sdx, self.sdy)
+        [self.can.set(self.sdx + x, self.sdy + y) for x, y in self.zip_xs_ys]
+        
+        dp = self.dp
+        print(self.can.frame())
+        #print('angle = ', round(deg*dp)/dp, ' deg = ', round(rad*dp)/dp, ' rad')
+        #print('dx,dy] = ', dx, ', ', dy)
+        #print('sdx,sdy] = ', self.sdx, ', ', self.sdy)
 
 if __name__ == '__main__':
     print('Hey')
     gpc = GPC()
+    dv = DirectionView()
     while(1):
-        gpc.update()
+        gpc.update(info=0)
 
-        data = gpc.childs['rightstick'].data
-        data = gpc.btns['LHstick'].data
+#        data = gpc.childs['rightstick'].data
+#        data = gpc.btns['LHstick'].data
         data = gpc.btns['leftstick'].fdata
-        show_direction(data)
+        dv.show_direction(data)
+
 
         
 
