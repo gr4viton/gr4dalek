@@ -3,7 +3,7 @@ from __future__ import print_function
 from drawille import Canvas, Turtle
 from math import sin, radians, atan2, degrees, ceil
 
-from main import GamePadControler as GPC
+from gamepad_control import GamePadControler as GPC
 
 c = Canvas()
 
