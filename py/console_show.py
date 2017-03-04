@@ -23,7 +23,7 @@ class DirectionView():
         decimal_points = 2
         self.dp = 10^decimal_points
 
-        max_ = 256
+        max_ = 512
         max_y = ceil(max_/s)
         max_x = ceil(max_/s)
 
@@ -50,13 +50,17 @@ class DirectionView():
         ys = [ 1, +1,-1, -1, 1, 0,-1,  0]
         self.zip_xs_ys = list(zip(xs,ys))
         
+    def round(self, value):
+        return round(value * self.dp) / self.dp
 
     def show_direction(self, direction):
 #        print(dir(self.can))
         [self.can.unset(self.sdx + x, self.sdy + y) for x, y in self.zip_xs_ys]
+        
 
         if direction is None:
             return
+        self.x, self.y = direction[0:2]
         dx, dy = [ d* maxd for d, maxd in zip(direction[0:2], self.half_d) ]    
 
         if dx is None and dy is None:
@@ -77,21 +81,27 @@ class DirectionView():
         
         dp = self.dp
         print(self.can.frame())
-        #print('angle = ', round(deg*dp)/dp, ' deg = ', round(rad*dp)/dp, ' rad')
-        #print('dx,dy] = ', dx, ', ', dy)
+
+        #print('angle = ', round(deg*dp)/dp, ' deg = ', round(rad*dp)/dp, ' rad')a
+
+        print(self.round(self.x), ', ', self.round(self.y), ', ', self.round(deg), '°')
         #print('sdx,sdy] = ', self.sdx, ', ', self.sdy)
 
 if __name__ == '__main__':
     print('Hey')
     gpc = GPC()
-    dv = DirectionView()
+    dv_left = DirectionView()
+    dv_right = DirectionView()
     while(1):
         gpc.update(info=0)
 
 #        data = gpc.childs['rightstick'].data
 #        data = gpc.btns['LHstick'].data
-        data = gpc.btns['leftstick'].fdata
-        dv.show_direction(data)
+        left = gpc.btns['leftstick'].fdata
+        right = gpc.btns['rightstick'].fdata
+
+        dv_left.show_direction(left)
+        dv_right.show_direction(right)
 
 
         

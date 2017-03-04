@@ -301,11 +301,15 @@ class Machine():
 
         q.init_DCs()
  #       q.init_lcd()
+        q.init_spi()
 
         q.main_loop()
-
+        
     def init_DCs(q):
         q.dd = MecDrive()
+
+    def init_spi():
+        pass       
 
     def init_control(q):
         q.control = ButtonControl()

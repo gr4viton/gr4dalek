@@ -121,7 +121,6 @@ class GamePadControler():
 
     def format_directionXYDegree(xdata, ydata):
         xy = GamePadControler.format_directionXY(xdata, ydata)
-        print(xy)
         deg = degrees(atan2(float(xy[0]),float(xy[1])))
         return xy + [deg]
 
@@ -213,6 +212,7 @@ rightstick:Right stick:RVstick:RHstick"""
         sw_hotkeys = \
 """up:UP arrow:updown:format_trigger_upleft_arrows
 down:DOWN arrow:updown:format_trigger_downright_arrows
+rightstick:Right stick:RHstick,RVstick:format_directionXYDegree
 leftstick:Left stick:LHstick,LVstick:format_directionXYDegree
 left:LEFT arrow:leftright:format_trigger_upleft_arrows
 right:RIGHT arrow:leftright:format_trigger_downright_arrows"""
