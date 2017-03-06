@@ -1,6 +1,6 @@
 print('>>>>>>>>> STARTING MICROPYTHON ON STM32F4')
 import pyb
-from pyb import I2C 
+from pyb import I2C, SPI
 
 import staccel
 import math
@@ -15,24 +15,20 @@ import shared_globals
 
 #from shared_globals import move_arrow_pressed as move_arrow_pressed
 
-
 import lcd_i2c
 
 import micropython
 micropython.alloc_emergency_exception_buf(100)
+print('Micropython alloc_emergency_exception_buffer set to 100')
 
 #import operator # dict sorting
-
-
-
-try: 
-    print('try importing pins')
-    import pins
-except ImportError:
-    print('pins not found')
+#try: 
+#    print('try importing pins')
+#    import pins
+#except ImportError:
+#    print('pins not found')
 
 #from machine import Pins
-
 
 
 #print('>>>>>>> shape assert')
@@ -294,6 +290,9 @@ class Machine():
     
     def __init__(q):
 #        q.show_gpio()
+
+        q.init_spi()
+
         q.init_buttons()
         q.init_control()
 
@@ -301,15 +300,34 @@ class Machine():
 
         q.init_DCs()
  #       q.init_lcd()
-        q.init_spi()
 
         q.main_loop()
         
     def init_DCs(q):
         q.dd = MecDrive()
 
-    def init_spi():
+    def init_spi(q):
+        print('spi initialization')
+        q.spi = SPI(2, SPI.SLAVE, baudrate=60000, polarity=1, phase=0, crc=0x7)
+        q.spi.init(mode=SPI.SLAVE)
+        byte_count = 4
+        q.byte_format = 'utf-8'
+        write_buf = bytearray(byte_count) 
+        read_buf = bytearray(byte_count) 
+        print('spi loop started', write_buf)
+        old_read_buf = bytearray(byte_count)
+        while True:
+            q.spi.write_readinto(write_buf, read_buf)
+            same = sum([1 for B1, B2 in zip(read_buf, old_read_buf) if B1 == B2])
+            if same:
+                #read = [byte.decode(q.byte_format) for byte in read_buf]
+                read = read_buf
+                print('sent', write_buf)
+                print('got', read)
+            old_read_buf[:] == read_buf[:]
+            pyb.delay(100)
         pass       
+
 
     def init_control(q):
         q.control = ButtonControl()
