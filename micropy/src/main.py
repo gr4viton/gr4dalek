@@ -330,8 +330,9 @@ class Machine():
                 
 #                [print(B1, B2) for B1, B2 in zip(read_buf, old_read_buf)]
                 read = unpack('<H', read_buf)[0]
-                print('sent', write_buf)
-                print('got', read)
+                print('____')
+                print('sent:', write_buf)
+                print('got :', read)
             old_read_buf = [B for B in read_buf]
             pyb.delay(100)
         pass       
