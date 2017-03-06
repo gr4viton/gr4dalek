@@ -16,7 +16,9 @@ import shared_globals
 
 #from shared_globals import move_arrow_pressed as move_arrow_pressed
 
-import lcd_i2c
+from struct import unpack
+
+#import lcd_i2c
 
 import micropython
 import boot
@@ -327,7 +329,7 @@ class Machine():
                 #read = [byte.decode(q.byte_format) for byte in read_buf]
                 
 #                [print(B1, B2) for B1, B2 in zip(read_buf, old_read_buf)]
-                read = read_buf.decode(q.byte_format)
+                read = unpack('<H', read_buf)[0]
                 print('sent', write_buf)
                 print('got', read)
             old_read_buf = [B for B in read_buf]

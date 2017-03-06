@@ -39,6 +39,7 @@ class DalekRPi():
                 i += 1
                 #a =a [i, i+1, i+2, i+3]
                 a = [i]
+
         def write_pot(input):
             """ Split an integer input into a two byte array to send via SPI
             """

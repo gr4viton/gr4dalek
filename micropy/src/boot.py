@@ -10,9 +10,9 @@ try:
 #    print('pins module imported')
 except ImportError:
 #    print('pins module not found')
-
+    pass
 #pyb.main('main.py') # main script to run after this one
-pyb.sync()
+#pyb.sync()
 
 global version
 
