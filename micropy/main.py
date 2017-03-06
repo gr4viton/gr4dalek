@@ -9,8 +9,9 @@ import os
 #import gc # garbage collection for writing?
 
 #import microsnake
-from microsnake import MicroSnakeGame as Game
+#from microsnake import MicroSnakeGame as Game
 #from microsnake import move_arrow_pressed
+
 import shared_globals
 
 #from shared_globals import move_arrow_pressed as move_arrow_pressed
