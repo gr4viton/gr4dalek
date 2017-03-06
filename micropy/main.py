@@ -18,6 +18,9 @@ import shared_globals
 import lcd_i2c
 
 import micropython
+import boot
+boot.print_version()
+
 micropython.alloc_emergency_exception_buf(100)
 print('Micropython alloc_emergency_exception_buffer set to 100')
 
@@ -319,12 +322,14 @@ class Machine():
         while True:
             q.spi.write_readinto(write_buf, read_buf)
             same = sum([1 for B1, B2 in zip(read_buf, old_read_buf) if B1 == B2])
-            if same:
+            if same <  byte_count:
                 #read = [byte.decode(q.byte_format) for byte in read_buf]
-                read = read_buf
+                
+#                [print(B1, B2) for B1, B2 in zip(read_buf, old_read_buf)]
+                read = read_buf.decode(q.byte_format)
                 print('sent', write_buf)
                 print('got', read)
-            old_read_buf[:] == read_buf[:]
+            old_read_buf = [B for B in read_buf]
             pyb.delay(100)
         pass       
 
@@ -511,8 +516,9 @@ class Machine():
 
 
 
-
-if __name__ == '__main__':
+def run():
     m = Machine()
     print('End of machine program!')
 
+if __name__ == '__main__':
+    run()
