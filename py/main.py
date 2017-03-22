@@ -16,93 +16,86 @@ from struct import unpack, pack
 from cli_gui import DirectionView
 from gamepad_control import GamePadControler as GPC
  
-import wiringpi
+import wiringpi as wp
 
-
-
-SPIchannel = 1 #SPI Channel (CE1)
-SPIspeed = 500000 #Clock Speed in Hz
-wiringpi.wiringPiSetupGpio()
-wiringpi.wiringPiSPISetup(SPIchannel, SPIspeed)
-
-
-
-sendData = str(42) #will send TWO bytes, a byte 4 and a byte 2
-recvData = wiringpi.wiringPiSPIDataRW(SPIchannel, sendData)
-#recvData now holds a list [NumOfBytes, recvDataStr] e.g. [2, '\x9A\xCD']
-
-#alternatively, to send a single byte:
-sendData = chr(42) #will send a single byte containing 42
-recvData = wiringpi.wiringPiSPIDataRW(SPIchannel, sendData)
-#recvData is again a list e.g. [1, '\x9A']
-
-
-time.p
 
 class DalekRPi():
-        def __init__(self):
-            #self.init_gamepad()
-            self.init_spi()
+    def __init__(self):
+        #self.init_gamepad()
+        self.init_wiringpi()
 
-        def init_spi(self):
-            self.spi = spidev.SpiDev()
-            self.spi.open(0,0)
-            self.spi.max_speed_hz = 60000
-            print(dir(self.spi))
-            print('lsb first = big endian =', self.spi.lsbfirst)
-            self.spi_mode = 0
-            print('polarity =', self.spi.mode)
-            #self.
-            maxi = 2**31-1
-            maxi = 15
-            i = 1
-            print('spi loop starting')
-            
-            while True:
-                #[0x42])
-                #i = i*2
-                i = i+1
-                if i >= maxi:
-                    i = 0
-                a = pack('<b', i)
-                aa = [int(B) for B in a]
+    def init_wiringpi(self):
+        self.init_uart()
+        #self.init_spi()
 
-                print('____')
-                print('sent', i, aa, a, sep='\t')
-                resp = self.spi.xfer2(a)
-                print('got', resp[0], sep='\t')
-                time.sleep(1)
-            self.spi.close()
-            exit()
-                
-
-        def write_pot(input):
-            """ Split an integer input into a two byte array to send via SPI
-            """
-            msb = input >> 8
-            lsb = input & 0xFF
-            self.spi.xfer([msb, lsb])
-
-        def init_gamepad(self):
-            self.gpc = GPC()
-            self.dv_left = DirectionView()
-            self.dv_right = DirectionView()
-            
-        def run(self):
-            self.update_loop()
+    def init_uart(self):
+        self.uart = wp.serialOpen('/dev/ttyAMA0', 9600)
+        wp.serialPuts(self.uart, 'hello')
+        wp.serialClose(self.uart)
 
 
-        def update_loop(self):
-            while(1):
-                self.gpc.update(info=0)
+    def init_spi(self):
+#            https://projects.drogon.net/raspberry-pi/wiringpi/pins/
+        wp.wiringPiSetup()
 
-                left = self.gpc.btns['leftstick'].fdata
-                right = self.gpc.btns['rightstick'].fdata
+        self.SPIchannel = 1 #SPI Channel (CE1)
+        SPIspeed = 500000 #Clock Speed in Hz
+        spi_mode = 0 # cpol 0, cpha 0, cedg 1
 
-                self.dv_left.show_direction(left)
-                self.dv_right.show_direction(right)
+        ret = wp.wiringPiSPISetupMode(self.SPIchannel, SPIspeed, spi_mode)
+        if ret == -1:
+            print('SPI setup returned error')
+            return
+#           print(str(dir(wp)).replace(' ', '\n'))
+        print('>> SPI initialized')
+        ret = wp.wiringPiSPIGetFd(self.SPIchannel)
+        print('spi file-descriptor', ret)
+
+        print('starting spi loop')
+        i=0
+        while True:
+        
+            self.write_pot(i)
+            time.sleep(1)
+            i += 1
+
+    def write_pot_spi(self, input):
+        """ Split an integer input into a two byte array to send via SPI
+        """
+        
+        data = input
+        try:
+            ret = wp.wiringPiSPIDataRW(self.SPIchannel, 'a')
+        except e:
+            print('error')
+            print(e)
+        print('got returned')
+        print('returned data', data)
+
+
+    def init_gamepad(self):
+        self.gpc = GPC()
+        self.dv_left = DirectionView()
+        self.dv_right = DirectionView()
+        
+    def run(self):
+        self.update_loop()
+
+
+    def update_loop(self):
+        while(1):
+            self.gpc.update(info=0)
+
+            left = self.gpc.btns['leftstick'].fdata
+            right = self.gpc.btns['rightstick'].fdata
+
+            self.dv_left.show_direction(left)
+            self.dv_right.show_direction(right)
 
 if __name__ == '__main__':
     print('Hey')
     dalek = DalekRPi()
+    print('eof')
+    pass
+
     dalek.run()

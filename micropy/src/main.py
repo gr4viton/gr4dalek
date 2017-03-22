@@ -344,7 +344,7 @@ class Machine():
 
     def init_spi(q):
         print('spi initialization')
-        q.spi = SPI(2, SPI.SLAVE, baudrate=60000, polarity=0, phase=0, firstbit=SPI.LSB, crc=None) #0x7)
+        q.spi = SPI(2, SPI.SLAVE, baudrate=500000, polarity=0, phase=0, firstbit=SPI.LSB, crc=None) #0x7)
         q.spi.init(mode=SPI.SLAVE)
         q.byte_count = 1
         q.byte_format = 'utf-8'
