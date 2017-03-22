@@ -10,11 +10,34 @@
 
 import time
 import sys
-import spidev
+#import spidev
 
+from struct import unpack, pack
 from cli_gui import DirectionView
 from gamepad_control import GamePadControler as GPC
  
+import wiringpi
+
+
+
+SPIchannel = 1 #SPI Channel (CE1)
+SPIspeed = 500000 #Clock Speed in Hz
+wiringpi.wiringPiSetupGpio()
+wiringpi.wiringPiSPISetup(SPIchannel, SPIspeed)
+
+
+
+sendData = str(42) #will send TWO bytes, a byte 4 and a byte 2
+recvData = wiringpi.wiringPiSPIDataRW(SPIchannel, sendData)
+#recvData now holds a list [NumOfBytes, recvDataStr] e.g. [2, '\x9A\xCD']
+
+#alternatively, to send a single byte:
+sendData = chr(42) #will send a single byte containing 42
+recvData = wiringpi.wiringPiSPIDataRW(SPIchannel, sendData)
+#recvData is again a list e.g. [1, '\x9A']
+
+
+time.p
 
 class DalekRPi():
         def __init__(self):
@@ -25,20 +48,33 @@ class DalekRPi():
             self.spi = spidev.SpiDev()
             self.spi.open(0,0)
             self.spi.max_speed_hz = 60000
-    
-            a = [1]
-            print(a)
-            i = 0
+            print(dir(self.spi))
+            print('lsb first = big endian =', self.spi.lsbfirst)
+            self.spi_mode = 0
+            print('polarity =', self.spi.mode)
+            #self.
+            maxi = 2**31-1
+            maxi = 15
+            i = 1
+            print('spi loop starting')
+            
             while True:
                 #[0x42])
-                print('sent', a)
-                resp = self.spi.xfer(a)
-                print('got', resp[0])
+                #i = i*2
+                i = i+1
+                if i >= maxi:
+                    i = 0
+                a = pack('<b', i)
+                aa = [int(B) for B in a]
+
+                print('____')
+                print('sent', i, aa, a, sep='\t')
+                resp = self.spi.xfer2(a)
+                print('got', resp[0], sep='\t')
                 time.sleep(1)
+            self.spi.close()
+            exit()
                 
-                i += 1
-                #a =a [i, i+1, i+2, i+3]
-                a = [i]
 
         def write_pot(input):
             """ Split an integer input into a two byte array to send via SPI
@@ -65,32 +101,6 @@ class DalekRPi():
 
                 self.dv_left.show_direction(left)
                 self.dv_right.show_direction(right)
-                                    
-def buildReadCommand(channel):
-    startBit = 0x01
-    singleEnded = 0x08
-
-# Return python list of 3 bytes
-#   Build a python list using [1, 2, 3]
-#   First byte is the start bit
-#   Second byte contains single ended along with channel #
-#   3rd byte is 0
-    return []
-
-def processAdcValue(result):
-    '''Take in result as array of three bytes. 
-    Return the two lowest bits of the 2nd byte and
-    all of the third byte'''
-    pass
-
-def readAdc(channel):
-    if ((channel > 7) or (channel < 0)):
-        return -1
-    r = spi.xfer2(buildReadCommand(channel))
-    return processAdcValue(r)
-
-
-
 
 if __name__ == '__main__':
     print('Hey')

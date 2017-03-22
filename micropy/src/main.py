@@ -16,7 +16,8 @@ import shared_globals
 
 #from shared_globals import move_arrow_pressed as move_arrow_pressed
 
-from struct import unpack
+from struct import unpack, pack # not interrupt safe = using heap
+import binascii as ba
 
 #import lcd_i2c
 
@@ -297,12 +298,12 @@ class Machine():
     def __init__(q):
 #        q.show_gpio()
 
+        q.init_leds()
         q.init_spi()
 
         q.init_buttons()
         q.init_control()
 
-        q.init_leds()
 
         q.init_DCs()
  #       q.init_lcd()
@@ -312,30 +313,75 @@ class Machine():
     def init_DCs(q):
         q.dd = MecDrive()
 
-    def init_spi(q):
-        print('spi initialization')
-        q.spi = SPI(2, SPI.SLAVE, baudrate=60000, polarity=1, phase=0, crc=0x7)
-        q.spi.init(mode=SPI.SLAVE)
-        byte_count = 4
-        q.byte_format = 'utf-8'
-        write_buf = bytearray(byte_count) 
-        read_buf = bytearray(byte_count) 
-        print('spi loop started', write_buf)
-        old_read_buf = bytearray(byte_count)
+        return
+   # def spi_loop(q):
+        i = 0
+        write_buf = bytearray(pack(q.pack_format, i))
+        print('write_buf:', write_buf)
+        print('read_buf :', read_buf)
+        print('>> spi loop starting')
         while True:
-            q.spi.write_readinto(write_buf, read_buf)
+            #q.spi.write_readinto(write_buf, read_buf)
+            q.spi.readinto(read_buf)
             same = sum([1 for B1, B2 in zip(read_buf, old_read_buf) if B1 == B2])
+
             if same <  byte_count:
-                #read = [byte.decode(q.byte_format) for byte in read_buf]
-                
 #                [print(B1, B2) for B1, B2 in zip(read_buf, old_read_buf)]
-                read = unpack('<H', read_buf)[0]
+
+                write_buf = pack(q.pack_format, i)
+                i += 1 
+                read = unpack(q.pack_format, read_buf)[0]
+                
+                ww = [int(B) for B in write_buf]
+                rr = [int(B) for B in read_buf]
                 print('____')
-                print('sent:', write_buf)
-                print('got :', read)
+                print('sent:', i, ww, write_buf, sep='\t')
+                print('got :', read, rr, read_buf, sep='\t')
+
             old_read_buf = [B for B in read_buf]
             pyb.delay(100)
-        pass       
+   
+
+    def init_spi(q):
+        print('spi initialization')
+        q.spi = SPI(2, SPI.SLAVE, baudrate=60000, polarity=0, phase=0, firstbit=SPI.LSB, crc=None) #0x7)
+        q.spi.init(mode=SPI.SLAVE)
+        q.byte_count = 1
+        q.byte_format = 'utf-8'
+        q.pack_format = '<b'
+
+        q.read_buf = bytearray(q.byte_count) 
+        q.i = 0
+        q.old_read_buf = bytearray(q.byte_count)
+        
+        print('Initializing SPI chip select')
+        pin_CS_id = 'B12'
+        callback = q.on_spi_CS
+        q.pin_CS = pyb.Pin(pin_CS_id)
+#        pyb.ExtInt(pin_CS_id, pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_UP, callback)
+#        pyb.ExtInt(pin_CS_id, pyb.ExtInt.IRQ_FALLING, pyb.Pin.PULL_UP, callback)
+        pyb.ExtInt(pin_CS_id, pyb.ExtInt.IRQ_RISING_FALLING, pyb.Pin.PULL_UP, callback)
+        q.rr = list(range(q.byte_count))
+        q.ww = list(range(q.byte_count))
+
+        return
+    
+    def hexint(q, b):
+        return int(ba.hexlify(b), 16)
+
+    def on_spi_CS(q, line):
+        print('on_spi_CS')
+        try:
+            q.spi.readinto(q.read_buf)
+            i=0
+            while i<q.byte_count:
+                q.rr[i] = int(q.read_buf[i] >> 1)
+                i+=1
+            print('buffer read = ', q.rr, q.read_buf, sep='\t')
+            q.leds[3].toggle()
+        except Exception as e: 
+            print('something wrong happened', e)
+
 
 
     def init_control(q):
@@ -449,6 +495,8 @@ class Machine():
             q.btns.append(btn)
 
         shared_globals.btns_pressed = [False, False, False, False]        
+        
+        
 
     def init_i2c(q, bus=2, role=I2C.MASTER, baudrate=115200, self_addr=0x42):
         q.i2c = I2C(bus)

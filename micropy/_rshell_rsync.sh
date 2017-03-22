@@ -5,3 +5,5 @@ awk -F, '{$1=$1+1}1' OFS=, src/version.txt >tmp & mv tmp src/version.txt
 echo "VERSION="`cat src/version.txt`
 
 rshell -f rshell_scripts/rsync.sh
+sync
+minicom -D /dev/ttyACM0
