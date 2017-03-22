@@ -32,6 +32,13 @@ class GamePadSwHotkey(object):
     def fdata(self):
         self.update_fdata()
         return self._fdata
+    
+    @property
+    def fdata_changed(self):
+        old_fdata = self._fdata
+        self.update_fdata()
+        changed = old_fdata != self._fdata
+        return self._fdata, changed
 
     #def kind(self):
     #    return self.hw_btn.kind

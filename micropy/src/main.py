@@ -1,6 +1,6 @@
 print('>>>>>>>>> STARTING MICROPYTHON ON STM32F4')
 import pyb
-from pyb import I2C, SPI
+from pyb import I2C, SPI, UART
 
 import staccel
 import math
@@ -299,7 +299,8 @@ class Machine():
 #        q.show_gpio()
 
         q.init_leds()
-        q.init_spi()
+#        q.init_spi()
+        q.init_uart()
 
         q.init_buttons()
         q.init_control()
@@ -310,37 +311,12 @@ class Machine():
 
         q.main_loop()
         
+
+
+
     def init_DCs(q):
         q.dd = MecDrive()
 
-        return
-   # def spi_loop(q):
-        i = 0
-        write_buf = bytearray(pack(q.pack_format, i))
-        print('write_buf:', write_buf)
-        print('read_buf :', read_buf)
-        print('>> spi loop starting')
-        while True:
-            #q.spi.write_readinto(write_buf, read_buf)
-            q.spi.readinto(read_buf)
-            same = sum([1 for B1, B2 in zip(read_buf, old_read_buf) if B1 == B2])
-
-            if same <  byte_count:
-#                [print(B1, B2) for B1, B2 in zip(read_buf, old_read_buf)]
-
-                write_buf = pack(q.pack_format, i)
-                i += 1 
-                read = unpack(q.pack_format, read_buf)[0]
-                
-                ww = [int(B) for B in write_buf]
-                rr = [int(B) for B in read_buf]
-                print('____')
-                print('sent:', i, ww, write_buf, sep='\t')
-                print('got :', read, rr, read_buf, sep='\t')
-
-            old_read_buf = [B for B in read_buf]
-            pyb.delay(100)
-   
 
     def init_spi(q):
         print('spi initialization')
@@ -397,7 +373,44 @@ class Machine():
             print('state_vels =', state.vels)
             for dc in q.dd.dcms:
                 print(dc)
+    
+    def init_uart(q):
+        q.uart = UART(6, 9600)
+        q.uart.deinit()
+        q.uart.init(115200, bits=8, parity=None, stop=1,
+                read_buf_len=100, flow=0, timeout=10 )
+        q.buf = []
+        q.end_cmd = '\n'
 
+
+    def uart_process(q):
+        #print(q.uart)
+
+        parity_check = False
+        q.cmd = None
+        while q.uart.any():
+            c = chr(q.uart.readchar())
+            #print('got char', c)
+            if parity_check != True:
+                if c == q.end_cmd:
+                    q.cmd = ''.join(q.buf)
+                    print('>>> got full cmd', q.cmd)
+                    q.buf = []
+                    parity_check = True
+                else:
+                    q.buf.append(c)
+            else:
+                packet = q.cmd
+                checksum = 0
+                for el in packet:
+                    checksum ^= ord(el)
+                #print('calculated parity =', checksum)
+                #print('got parity', ord(c))
+                if ord(c) == checksum:
+                    #print('>>> parity good')
+                    print('!!! got full cmd', q.cmd)
+                else:
+                    print('bad parity!')
     def main_loop(q):
         a = 0
 
@@ -414,7 +427,8 @@ class Machine():
 #            r,d,l,u = q.btns_pressed
             change = q.control.querry_state()
             state = q.control.state
-                
+            
+            q.uart_process()
  #           print(state.vels)
  
 

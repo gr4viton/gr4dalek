@@ -18,19 +18,31 @@ from gamepad_control import GamePadControler as GPC
  
 import wiringpi as wp
 
+#class ControlSTM():
+#    def __init__(self):
+
 
 class DalekRPi():
     def __init__(self):
-        #self.init_gamepad()
         self.init_wiringpi()
+        self.init_gamepad()
 
     def init_wiringpi(self):
         self.init_uart()
         #self.init_spi()
 
+
+
     def init_uart(self):
-        self.uart = wp.serialOpen('/dev/ttyAMA0', 9600)
-        wp.serialPuts(self.uart, 'hello')
+        self.ch_end = '\n'
+
+        self.uart = wp.serialOpen('/dev/ttyAMA0', 115200)
+        
+        self.send_str('>>>>>J')
+
+        print(str(dir(wp)).replace(' ', '\n'))
+    
+    def on_exit(self):
         wp.serialClose(self.uart)
 
 
@@ -46,7 +58,6 @@ class DalekRPi():
         if ret == -1:
             print('SPI setup returned error')
             return
-#           print(str(dir(wp)).replace(' ', '\n'))
         print('>> SPI initialized')
         ret = wp.wiringPiSPIGetFd(self.SPIchannel)
         print('spi file-descriptor', ret)
@@ -58,6 +69,8 @@ class DalekRPi():
             self.write_pot(i)
             time.sleep(1)
             i += 1
+
+
 
     def write_pot_spi(self, input):
         """ Split an integer input into a two byte array to send via SPI
@@ -82,20 +95,48 @@ class DalekRPi():
         self.update_loop()
 
 
+    def send_str(self, data):
+        checksum = 0
+        for ch in data:
+            checksum ^= ord(ch)
+                
+        print('checksum', checksum, 'for str', data)
+        data = data + self.ch_end + chr(checksum)
+
+        
+        wp.serialPuts(self.uart, data)
+        wp.serialFlush(self.uart)
+        print('sent data', data.encode())
+
+
+    def write_pot_uart(self, input):
+        
+        data = str(input)+'\n'
+        
+        data = '_'.join([ str(round(val, 2)) for val in input])
+
+        self.send_str(data)
+
     def update_loop(self):
-        while(1):
+        stick_names = ('leftstick', 'rightstick')
+        stick_dvs = (self.dv_left, self.dv_right)
+        while True:
+            i = 0
+
             self.gpc.update(info=0)
+            
+            for name, dv in zip(stick_names, stick_dvs):
+                fdata, changed = self.gpc.btns[name].fdata_changed
+            
+                dv.show_direction(fdata)
+                
+                if  changed:
+                    self.write_pot_uart(fdata)
 
-            left = self.gpc.btns['leftstick'].fdata
-            right = self.gpc.btns['rightstick'].fdata
 
-            self.dv_left.show_direction(left)
-            self.dv_right.show_direction(right)
 
 if __name__ == '__main__':
     print('Hey')
     dalek = DalekRPi()
-    print('eof')
-    pass
-
     dalek.run()
+    dalek.on_exit()
