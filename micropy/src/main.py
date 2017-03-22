@@ -21,6 +21,8 @@ import binascii as ba
 
 #import lcd_i2c
 
+from dcmotor import DCMotor
+
 import micropython
 import boot
 boot.print_version()
@@ -37,88 +39,9 @@ print('Micropython alloc_emergency_exception_buffer set to 100')
 
 #from machine import Pins
 
-
 #print('>>>>>>> shape assert')
 #a = [[[1,2],[1,2]],[[1,2],[1,2]]]
 #print(shared_globals.print_shape(a))
-
-
-#x = [0,1,2,3]
-#move_arrow_pressed = None
-#micropython
-#microsnake.move_arrow_pressed = move_arrow_pressed
-
-class FakePin():
-    def value(q, value):
-        pass
-
-class DCMotor():
-
-    def __init__( q, name, in1_pin, in2_pin, 
-            tim_num, tim_channel, tim_pin, 
-            dir_en=1, tim_freq=30000): 
-
-         #       print(q.__dict__)
-        q.name = name.strip()
-        q.in1_pin = in1_pin
-        q.in2_pin = in2_pin
-        q.tim_num = int(tim_num)
-        q.tim_channel = int(tim_channel)
-        q.tim_pin = tim_pin
-        q.dir_en = int(dir_en)
-        q.tim_freq = float(tim_freq)
-
-        q.velocity = 0
-        
-        if dir_en:
-            q.in1 = pyb.Pin(in1_pin, pyb.Pin.OUT_PP)
-            q.in2 = pyb.Pin(in2_pin, pyb.Pin.OUT_PP)
-            q.in1.value(0)
-            q.in2.value(0)
-        else:
-            q.in1 = FakePin()
-            q.in2 = FakePin()
-
-        q.tim = pyb.Timer(tim_num)
-        q.tim.init(freq=tim_freq)        
-#        q.en = q.tim.channel(tim_channel, pyb.Timer.PWM, pin=tim_pin)
-        q.en = q.tim.channel(tim_channel, pyb.Timer.PWM, pin=pyb.Pin(tim_pin))
-        q.en.pulse_width_percent(0)
-
-#        MyMapperDict = { 'LeftMotorDir' : pyb.Pin.cpu.C12 }
-#        pyb.Pin.dict(MyMapperDict)
-#        g = pyb.Pin("LeftMotorDir", pyb.Pin.OUT_OD)
-
-
-    def vel(q, vel=0):
-        if vel < -100:
-            vel = -100
-        elif vel > 100:
-            vel = 100
-
-        if vel == 0:
-            q.in1.value(0)
-            q.in2.value(0)
-#            q.dir_en = 0
-        else:
-#            q.dir_en = 1
-            if vel > 0:
-                q.in1.value(1)
-                q.in2.value(0)
-            elif vel < 0:
-                q.in1.value(0)
-                q.in2.value(1)
-            if vel != q.velocity:
-                q.en.pulse_width_percent(abs(vel))
-#        print(vel, ' = ', q.name, ' velocity')
-        q.velocity = vel
-
-    def __str__(q):
-        ls = ['DCm[', q.name, 
-            '] in1,in2,tim,dir_en =[', 
-            q.in1_pin, ',', q.in2_pin, ',', q.tim_pin, ',', q.dir_en, 
-            ']=[', q.in1.value(), ',', q.in2.value(),'], vel=', q.velocity]
-        return ''.join([str(a) for a in ls])
 
 class DifDrive():
     def __init__(q):
@@ -305,14 +228,10 @@ class Machine():
         q.init_buttons()
         q.init_control()
 
-
         q.init_DCs()
  #       q.init_lcd()
 
         q.main_loop()
-        
-
-
 
     def init_DCs(q):
         q.dd = MecDrive()
@@ -381,20 +300,24 @@ class Machine():
                 read_buf_len=100, flow=0, timeout=10 )
         q.buf = []
         q.end_cmd = '\n'
-
+        q.num_del = '_'
+        q.state_cmd = '>>>>>'
+        
+        q.joystick = False
 
     def uart_process(q):
         #print(q.uart)
 
         parity_check = False
         q.cmd = None
-        while q.uart.any():
+        new_command = False
+        while q.uart.any() and not new_command:
             c = chr(q.uart.readchar())
             #print('got char', c)
             if parity_check != True:
                 if c == q.end_cmd:
                     q.cmd = ''.join(q.buf)
-                    print('>>> got full cmd', q.cmd)
+                #    print('>>> got full cmd', q.cmd)
                     q.buf = []
                     parity_check = True
                 else:
@@ -409,8 +332,28 @@ class Machine():
                 if ord(c) == checksum:
                     #print('>>> parity good')
                     print('!!! got full cmd', q.cmd)
+                    new_command = True
                 else:
                     print('bad parity!')
+
+    def process_stick_cmd(q):
+        vals = [val for val in q.cmd.split(q.num_del)]
+        q.dir = vals[0:2]
+        print('mecanum direction', q.dir)
+            
+
+    def cmd_process(q):
+        if q.cmd:
+            q.joystick = True
+            if q.state_cmd in q.cmd:
+                if 'J' in q._state_cmd:
+                    q.joystick = True
+                    print('joystick control initialized')
+            else:
+                if q.joystick:
+                    q.process_stick_cmd()
+
+
     def main_loop(q):
         a = 0
 
@@ -429,6 +372,7 @@ class Machine():
             state = q.control.state
             
             q.uart_process()
+            q.cmd_process()
  #           print(state.vels)
  
 

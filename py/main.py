@@ -90,7 +90,8 @@ class DalekRPi():
         self.gpc = GPC()
         self.dv_left = DirectionView()
         self.dv_right = DirectionView()
-        
+        self.show_direction = False
+
     def run(self):
         self.update_loop()
 
@@ -128,7 +129,8 @@ class DalekRPi():
             for name, dv in zip(stick_names, stick_dvs):
                 fdata, changed = self.gpc.btns[name].fdata_changed
             
-                dv.show_direction(fdata)
+                if self.show_direction:
+                    dv.show_direction(fdata)
                 
                 if  changed:
                     self.write_pot_uart(fdata)
