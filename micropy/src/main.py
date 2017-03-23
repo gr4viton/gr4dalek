@@ -4,6 +4,7 @@ from pyb import I2C, SPI, UART
 
 import staccel
 import math
+from math import sin, cos
 
 import os
 #import gc # garbage collection for writing?
@@ -22,6 +23,10 @@ import binascii as ba
 #import lcd_i2c
 
 from dcmotor import DCMotor
+from robot_drives import MecDrive
+from btn_control import ButtonControl
+
+from state import State
 
 import micropython
 import boot
@@ -43,150 +48,99 @@ print('Micropython alloc_emergency_exception_buffer set to 100')
 #a = [[[1,2],[1,2]],[[1,2],[1,2]]]
 #print(shared_globals.print_shape(a))
 
-class DifDrive():
+class Stm2Rpi():
+    num_del = '_'
+    cmd_end = '\n'
+    gamepad_input_del = ':'
+    speed_rot_stick = 'R'
+    strafe_stick = 'L'
+    state_cmd = '>>>>>'
+    gamepad = 'J'
+
+    ok = 'ok'
+    nok = 'KO'
+
+class GamepadControl():
+
+    #github.com/piborg/zeroborg/blob/master/zbMecanumJoy.py
     def __init__(q):
-        q.init_dcs()
+        # from right strick
+        q.strafe_stick_vals = [0,0,0]
+        # from left stick horizontal
 
-    def init_dcs(q):
+        q.rot = 0
+        # from left stick vertical
+
+        q.slow_factor = 0.5
+        q.speed_rot_stick_vals = [0,0,0]
+        q.slow = False
+        q.vel_min = 0.05
+        q.rot_min = 0.05
+
+        q.vels = [0,0,0,0]
+
+
+    def calc_vels(q):
+
+    
+        for vel in q.vels:
+            if vel < q.vel_min: 
+                vel = 0
+        if q.rot < q.rot_min:
+            q.rot = 0
+        *q.vels, q.vel_angle = q.strafe_stick_vals
+        q.rot, speed_val, _ = q.speed_rot_stick_vals
         
-        q.dcms = []
-        q.dc = {}
-        # name, in1_pin, in2_pin, tim_num, tim_channel, tim_pin, dir_en=1, tim_freq=30000
-        tim_strs = \
-"""LF E0 E1 4 1 B6 1
-RF E2 E3 4 2 B7 1
-LB E0 E1 4 3 B8 0
-RB E2 E3 4 4 B9 0"""
-        for tim_str in tim_strs.split(';'):
-            print(tim_str)
-            tim_ls = tim_str.split()
-
-            for i in [3,4,6]:
-                tim_ls[i] = int(tim_ls[i])
-
-            print(tim_ls)                
-            dcm = DCMotor(*tim_ls)
-            q.dcms.append(dcm)        
-            q.dc[tim_ls[0]] = dcm
-        print(len(q.dcms), 'motors initialized')
-
-
-    def left_turn(q, value):
-        q.dc['LF'].vel(value)
-        q.dc['LB'].vel(value)
-
-    def right_turn(q, value):
-        q.dc['RF'].vel( value)
-        q.dc['RB'].vel( value)
-
-    def go_old(q, value, right=None):
-        if right is None:
-            left, right = value
+        if q.slow:
+            q.speed_factor = (abs(q.speed_val) + 1)/2
         else:
-            left = value
-        q.left_turn(left)
-        q.right_turn(right)
+            q.speed_factor = 1
 
 
-class MecDrive():
-    def __init__(q):
-        q.init_dcs()
+        strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
+        strafe_angle = vel_dir
+        # Determine the four drive power levelsa
 
-    def init_dcs(q):
-        
-        q.dcms = []
-        q.dc = {}
-        # name, in1_pin, in2_pin, tim_num, tim_channel, tim_pin, dir_en=1, tim_freq=30000
-        tim_strs = \
-"""RF D7 D5 4 1 B6 1
-LF D3 D1 4 2 B7 1
-RB E0 E1 4 3 B8 1
-LB E2 E3 4 4 B9 1"""
-#E0 brown -> red D7 u front
-        for tim_str in tim_strs.split('\n'):
-            print(tim_str)
-            tim_ls = tim_str.split()
+        # offset_angle
+        angle = q.vel_angle + (math.pi / 4)
 
-            for i in [3,4,6]:
-                tim_ls[i] = int(tim_ls[i])
+        # rf lf rb lb = vels
+        gon = [cos, sin, sin, cos]
+        fac = [-1, 1, -1, 1]
+        q.vels = [ strafe_speed * fac * gon(angle) + q.rot 
+                                for fac, gon in zip(gons,facs)]
+        # fl, fr, rl, rr
+ #       driveFL = +strafeSpeed * math.sin(offset_angle) + rotate
+  #      driveFR = -strafeSpeed * math.cos(offset_angle) + rotate
+   #     driveRL = +strafeSpeed * math.cos(offset_angle) + rotate
+    #    driveRR = -strafeSpeed * math.sin(offset_angle) + rotate
 
-            print(tim_ls)                
-            dcm = DCMotor(*tim_ls)
-            q.dcms.append(dcm)        
-            q.dc[tim_ls[0]] = dcm
-        print(len(q.dcms), 'motors initialized')
+        # Scale the drive power if any exceed 100%
+        max_wheel_vel = max([abs(vel) for vel in q.wheel_vels])
+        if max_wheel_vel > 1.0:
+            q.vels = [vel * q.speed_factor / max_wheel_vel 
+                                        for vel in q.wheel_vels]
 
 
-    def go(q, vels):
-        for dc, vel in zip(q.dcms, vels):
-            #if vel != 0:
-            #    print(dc.name, vel)
-            dc.vel(vel*0.8)
-
-class State():
-    def __init__(q, btns_state, vels, name):
-        q.btns_state = btns_state 
-        q.vels = vels
-        q.name = name
-
-class ButtonControl():
-    state = None
-    def __init__(q):
-        
-#r d l u
-        states_str = \
-"""0 0 0 0 0 0 0 0 idle
-0 0 0 1 100 100 100 100 front
-0 0 1 0 -100 100 -100 100 turn_left
-0 1 0 0 -100 -100 -100 -100 reverse 
-1 0 0 0 100 -100 100 -100 turn_right
-0 0 1 1 100 -100 -100 100 go_left
-1 0 0 1 -100 100 100 -100 go_right"""
-
-#r d l u
-        states_str_test = \
-"""0 0 0 0 0 0 0 0 idle
-0 0 0 1 100 0 0 0 RF
-0 0 1 0 0 0 100 0 RB
-0 1 0 0 0 100 0 0 LF
-1 0 0 0 0 0 0 100 LB"""
-
- #       states_str = states_str_test
-        states_list = states_str.split('\n')
-
-        q.states = []
-        for state_str in states_list:
-            btns_state = []
-            vels = []
-
-            state_list = state_str.split()
-
-            for i in range(4):
-                btns_state.append(int(state_list[i])==1)
-            for i in [4,5,6,7]:
-                vels.append(float(state_list[i]))
-
-            name = state_list[-1]
-
-            state = State(btns_state, vels, name)
-            print('state', btns_state, vels, name)
-            q.states.append(state)
-        
-        q.state = q.states[0]
-
-    def querry_state(q):
-        q.btns_pressed = shared_globals.btns_pressed
-        for state in q.states:
-            if state.btns_state == q.btns_pressed:
-#                print(state.btns_state, '?=', q.btns_pressed)                
-                if q.state != state:
-                    q.state = state                
-                    return state, q.state
-        return None
-
-                    
+    def process_stick_cmd(q, cmd):
+        q.cmd = cmd
+        print('got cmd', cmd)
+        input_type, str_vals = cmd.split(Stm2Rpi.gamepad_input_del)
+        vals = [float(val) for val in str_vals.split(Stm2Rpi.num_del)]
 
 
+        if Stm2Rpi.strafe_stick in input_type:
+            q.strafe_stick_vals = vals
+        elif Stm2Rpi.speed_rot_stick in input_type:
+            q.speed_rot_stick_vals = vals
+
+
+        q.calc_vels()
+
+        drive.go(q.wheel_vels)
+            
+
+    
 
 class Machine():
     n = 0
@@ -234,7 +188,7 @@ class Machine():
         q.main_loop()
 
     def init_DCs(q):
-        q.dd = MecDrive()
+        q.drive = MecDrive()
 
 
     def init_spi(q):
@@ -281,6 +235,8 @@ class Machine():
 
     def init_control(q):
         q.control = ButtonControl()
+        q.jcontrol = GamepadControl()
+    
 
     def clear_lcds(q):
         for lcd in q.lcds:
@@ -290,7 +246,7 @@ class Machine():
         print(state.name, "= current state")     
         if state.name != 'idle':
             print('state_vels =', state.vels)
-            for dc in q.dd.dcms:
+            for dc in q.drive.dcms:
                 print(dc)
     
     def init_uart(q):
@@ -299,12 +255,18 @@ class Machine():
         q.uart.init(115200, bits=8, parity=None, stop=1,
                 read_buf_len=100, flow=0, timeout=10 )
         q.buf = []
-        q.end_cmd = '\n'
-        q.num_del = '_'
-        q.state_cmd = '>>>>>'
         
         q.joystick = False
 
+
+    def send_ack(q):
+        q.uart.write(Stm2Rpi.ok)
+        print('sent ACK!')
+
+    def send_nack(q):
+        q.uart.write(Stm2Rpi.nok)
+        print('sent NACK!')
+    
     def uart_process(q):
         #print(q.uart)
 
@@ -315,9 +277,9 @@ class Machine():
             c = chr(q.uart.readchar())
             #print('got char', c)
             if parity_check != True:
-                if c == q.end_cmd:
+                if c == Stm2Rpi.cmd_end:
                     q.cmd = ''.join(q.buf)
-                #    print('>>> got full cmd', q.cmd)
+                    print('>>! got some cmd', q.cmd)
                     q.buf = []
                     parity_check = True
                 else:
@@ -331,55 +293,48 @@ class Machine():
                 #print('got parity', ord(c))
                 if ord(c) == checksum:
                     #print('>>> parity good')
-                    print('!!! got full cmd', q.cmd)
+                    print('>>> got full cmd', q.cmd)
                     new_command = True
+                    q.send_ack()
                 else:
                     print('bad parity!')
-
-    def process_stick_cmd(q):
-        vals = [val for val in q.cmd.split(q.num_del)]
-        q.dir = vals[0:2]
-        print('mecanum direction', q.dir)
-            
+                    q.send_nack()
+                    q.cmd = None
 
     def cmd_process(q):
         if q.cmd:
             q.joystick = True
-            if q.state_cmd in q.cmd:
-                if 'J' in q._state_cmd:
+            if Stm2Rpi.state_cmd in q.cmd:
+                if Stm2Rpi.gamepad in q.cmd:
                     q.joystick = True
                     print('joystick control initialized')
             else:
                 if q.joystick:
-                    q.process_stick_cmd()
+                    #q.jcontrol.process_stick_cmd(q.cmd)
+                    pass
 
 
     def main_loop(q):
         a = 0
 
-        v = 0
-        vmin, vmax = 0, 4
         vstep = 1
-        st = [[100, 0], [0, 100], [100, 100]]
-        vmax = len(st)
-        #vmin, vmax = -62, 62
         state = None
-        while(1):
+        q.send_ack()
+        while True:
             a += 1
 
+            # gpio button control
 #            r,d,l,u = q.btns_pressed
             change = q.control.querry_state()
             state = q.control.state
+            if change is not None:
+                q.drive.go(state.vels)
+                q.state_changed(*change)
             
+            # gamepad stick control
             q.uart_process()
             q.cmd_process()
- #           print(state.vels)
- 
-
-
-            if change is not None:
-                q.dd.go(state.vels)
-                q.state_changed(*change)
+            q.drive.go(q.jcontrol.vels)
 
             if a % 500000 == 0:        
                 pass

@@ -21,6 +21,19 @@ import wiringpi as wp
 #class ControlSTM():
 #    def __init__(self):
 
+class Stm2Rpi():
+    num_del = '_'
+    cmd_end = '\n'
+    gamepad_input_del = ':'
+    speed_rot_stick = 'R'
+    strafe_stick = 'L'
+    
+    turn_on = '>>>'
+    turn_off = '<<<'
+    gamepad='J'
+
+    ok='ok'
+    nok='KO'
 
 class DalekRPi():
     def __init__(self):
@@ -37,6 +50,7 @@ class DalekRPi():
         self.ch_end = '\n'
 
         self.uart = wp.serialOpen('/dev/ttyAMA0', 115200)
+        self.CTS = True
         
         self.send_str('>>>>>J')
 
@@ -97,6 +111,11 @@ class DalekRPi():
 
 
     def send_str(self, data):
+        self.get_ack()
+        if self.CTS == False:
+            print('not send - ack not got yet')
+            return
+
         checksum = 0
         for ch in data:
             checksum ^= ord(ch)
@@ -106,17 +125,36 @@ class DalekRPi():
 
         
         wp.serialPuts(self.uart, data)
-        wp.serialFlush(self.uart)
+        #wp.serialFlush(self.uart)
         print('sent data', data.encode())
+        self.CTS = False
+
+        self.get_ack()
+
+    def get_ack(self):
+        buf = []
+        while not self.CTS:
+            while wp.serialDataAvail(self.uart):
+                c = chr(wp.serialGetchar(self.uart))
+                buf.append(c)
+                str_buf = ''.join(buf)
+                print('buf', str_buf.encode())
+                if Stm2Rpi.ok in str_buf:
+                    self.CTS = True
+                    print('got ACK')
+                    #wp.serialFlush(self.uart)
+                elif Stm2Rpi.nok in str_buf:
+                    self.CTS = True
+                    print('got NACK')
 
 
-    def write_pot_uart(self, input):
+    def write_pot_uart(self, name, fdata):
         
-        data = str(input)+'\n'
-        
-        data = '_'.join([ str(round(val, 2)) for val in input])
+        abrev = name[0].upper() + Stm2Rpi.gamepad_input_del 
+        data = abrev + Stm2Rpi.num_del.join([ str(round(val, 3)) for val in fdata])
 
         self.send_str(data)
+
 
     def update_loop(self):
         stick_names = ('leftstick', 'rightstick')
@@ -124,7 +162,7 @@ class DalekRPi():
         while True:
             i = 0
 
-            self.gpc.update(info=0)
+            self.gpc.update(info=0, clear_screen=False)
             
             for name, dv in zip(stick_names, stick_dvs):
                 fdata, changed = self.gpc.btns[name].fdata_changed
@@ -133,7 +171,8 @@ class DalekRPi():
                     dv.show_direction(fdata)
                 
                 if  changed:
-                    self.write_pot_uart(fdata)
+                    self.write_pot_uart(name, fdata)
+
 
 
 

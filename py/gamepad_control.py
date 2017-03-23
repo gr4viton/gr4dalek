@@ -243,11 +243,12 @@ right:RIGHT arrow:leftright:format_trigger_downright_arrows"""
         if self.info > 0:
             print(*args)
 
-    def update(self, info=None):
+    def update(self, info=None, clear_screen=True):
         if info is not None:
             self.info = info
         self.read_data()
-        cls()
+        if clear_screen:
+            cls()
         self.print('>>>>> GOT NEW ACTION ', self.state)
         add = tuple(self.state[6:8])
         data = tuple(self.state[4:6])
