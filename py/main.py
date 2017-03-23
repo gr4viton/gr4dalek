@@ -162,7 +162,7 @@ class DalekRPi():
         while True:
             i = 0
 
-            self.gpc.update(info=0, clear_screen=False)
+            self.gpc.update(info=0, clear_screen=True)
             
             for name, dv in zip(stick_names, stick_dvs):
                 fdata, changed = self.gpc.btns[name].fdata_changed
