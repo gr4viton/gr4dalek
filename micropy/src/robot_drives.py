@@ -82,7 +82,6 @@ LB E2 E3 4 4 B9 1"""
             q.dc[tim_ls[0]] = dcm
         print(len(q.dcms), 'motors initialized')
 
-
     def go(q, vels):
         # rf lf rb lb       
         for dc, vel in zip(q.dcms, vels):

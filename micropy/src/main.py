@@ -4,7 +4,7 @@ from pyb import I2C, SPI, UART
 
 import staccel
 import math
-from math import sin, cos
+from math import sin, cos, radians
 
 import os
 #import gc # garbage collection for writing?
@@ -74,51 +74,61 @@ class GamepadControl():
         q.slow_factor = 0.5
         q.speed_rot_stick_vals = [0,0,0]
         q.slow = False
-        q.vel_min = 0.05
-        q.rot_min = 0.05
 
+        q.vel_min = 0.05
+        q.vel_max = 1
+        q.rot_min = 0.05
+        q.max_pwr, q.min_pwr = 100, 60
+        q.maxmin_pwr = q.max_pwr-q.min_pwr
         q.vels = [0,0,0,0]
 
 
     def calc_vels(q):
 
-    
-        for vel in q.vels:
-            if vel < q.vel_min: 
-                vel = 0
-        if q.rot < q.rot_min:
-            q.rot = 0
         *q.vels, q.vel_angle = q.strafe_stick_vals
-        q.rot, speed_val, _ = q.speed_rot_stick_vals
+        rot_val, speed_val, _ = q.speed_rot_stick_vals
+        print(rot_val)
+        q.rot = rot_val * math.pi / 10
         
         if q.slow:
             q.speed_factor = (abs(q.speed_val) + 1)/2
         else:
             q.speed_factor = 1
 
+        for vel in q.vels:
+            if vel < q.vel_min: 
+                vel = 0
+        if q.rot < q.rot_min:
+            q.rot = 0
+        
+
+        q.vels = [q.vels[0], -q.vels[1]]
 
         strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
         # Determine the four drive power levelsa
 
         # offset_angle
-        angle = q.vel_angle + (math.pi / 4)
-
-        # rf lf rb lb = vels
+        q.vel_angle = radians(q.vel_angle+180)
+        angle = q.vel_angle + math.pi/4
+        
+        # FR FL BR BL = vels
         gons = [cos, sin, sin, cos]
-        facs = [-1, 1, -1, 1]
-        q.vels = [ strafe_speed * fac * gon(angle) + q.rot 
+        facs = [1, -1, -1, 1]
+        q.vels = [ strafe_speed * gon(angle) + fac * q.rot 
                                 for fac, gon in zip(facs, gons)]
-        # fl, fr, rl, rr
- #       driveFL = +strafeSpeed * math.sin(offset_angle) + rotate
-  #      driveFR = -strafeSpeed * math.cos(offset_angle) + rotate
-   #     driveRL = +strafeSpeed * math.cos(offset_angle) + rotate
-    #    driveRR = -strafeSpeed * math.sin(offset_angle) + rotate
 
         # Scale the drive power if any exceed 100%
-        max_wheel_vel = max([abs(vel) for vel in q.vels])
-        if max_wheel_vel > 1.0:
-            q.vels = [vel * q.speed_factor / max_wheel_vel 
+        max_scale = max([abs(vel) for vel in q.vels])
+        if max_scale > 1.0:
+            q.vels = [vel * q.speed_factor / max_scale 
                                         for vel in q.vels]
+
+
+        q.vels = [ ((abs(vel)-q.vel_min)
+                    * q.maxmin_pwr + q.min_pwr) 
+                    * math.copysign(1, vel)
+                    * int(vel != 0)
+                    for vel in q.vels]
 
     def __str__(q):
         mot_names = 'FR FL BR BL'.split()
