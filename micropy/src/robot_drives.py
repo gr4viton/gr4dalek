@@ -88,5 +88,7 @@ LB E2 E3 4 4 B9 1"""
         for dc, vel in zip(q.dcms, vels):
             #if vel != 0:
             #    print(dc.name, vel)
-            dc.vel(vel*0.8)
+            dc.vel(vel, info=True)
+            #if vel != 0:
+             #   print(dc)
 

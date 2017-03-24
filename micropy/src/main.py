@@ -98,17 +98,16 @@ class GamepadControl():
 
 
         strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
-        strafe_angle = vel_dir
         # Determine the four drive power levelsa
 
         # offset_angle
         angle = q.vel_angle + (math.pi / 4)
 
         # rf lf rb lb = vels
-        gon = [cos, sin, sin, cos]
-        fac = [-1, 1, -1, 1]
+        gons = [cos, sin, sin, cos]
+        facs = [-1, 1, -1, 1]
         q.vels = [ strafe_speed * fac * gon(angle) + q.rot 
-                                for fac, gon in zip(gons,facs)]
+                                for fac, gon in zip(facs, gons)]
         # fl, fr, rl, rr
  #       driveFL = +strafeSpeed * math.sin(offset_angle) + rotate
   #      driveFR = -strafeSpeed * math.cos(offset_angle) + rotate
@@ -116,10 +115,17 @@ class GamepadControl():
     #    driveRR = -strafeSpeed * math.sin(offset_angle) + rotate
 
         # Scale the drive power if any exceed 100%
-        max_wheel_vel = max([abs(vel) for vel in q.wheel_vels])
+        max_wheel_vel = max([abs(vel) for vel in q.vels])
         if max_wheel_vel > 1.0:
             q.vels = [vel * q.speed_factor / max_wheel_vel 
-                                        for vel in q.wheel_vels]
+                                        for vel in q.vels]
+
+    def __str__(q):
+        mot_names = 'FR FL BR BL'.split()
+        lst = ['Mecanum wheel actual control state:\n']
+        [ lst.extend(['|', mot_names[i], '= ', round(q.vels[i], 2), '\n'])
+                            for i in range(4)]
+        return ''.join([str(i) for i in lst])
 
 
     def process_stick_cmd(q, cmd):
@@ -136,8 +142,8 @@ class GamepadControl():
 
 
         q.calc_vels()
-
-        drive.go(q.wheel_vels)
+        print(q)
+        #q.drive.go(q.wheel_vels)
             
 
     
@@ -279,7 +285,7 @@ class Machine():
             if parity_check != True:
                 if c == Stm2Rpi.cmd_end:
                     q.cmd = ''.join(q.buf)
-                    print('>>! got some cmd', q.cmd)
+ #                   print('>>! got some cmd', q.cmd)
                     q.buf = []
                     parity_check = True
                 else:
@@ -310,7 +316,7 @@ class Machine():
                     print('joystick control initialized')
             else:
                 if q.joystick:
-                    #q.jcontrol.process_stick_cmd(q.cmd)
+                    q.jcontrol.process_stick_cmd(q.cmd)
                     pass
 
 
@@ -328,7 +334,7 @@ class Machine():
             change = q.control.querry_state()
             state = q.control.state
             if change is not None:
-                q.drive.go(state.vels)
+                #q.drive.go(state.vels)
                 q.state_changed(*change)
             
             # gamepad stick control
@@ -439,7 +445,6 @@ class Machine():
         for lcd_a in lcd_as:
             new_lcd = lcd_i2c.lcd1602(q.i2c, lcd_a)
             q.lcds.append(new_lcd)
-        
 
         for i, lcd in enumerate(q.lcds):
             txt = 'Loading...lcd[{}]'.format(i)
@@ -456,7 +461,6 @@ class Machine():
         print('i2c initialization ended.')
 
     def show_gpio(q):
-
         print('>> dir(pyb.Pin.board)', dir(pyb.Pin.board))
         print('>> dir(pyb.Pin.cpu)', dir(pyb.Pin.cpu))
         
@@ -470,15 +474,10 @@ class Machine():
 
 
     def init_accel(q):
-        
         q.ac = staccel.STAccel()
         ac = q.ac
-
-
         #from pyb import Accel
-
         #accel = pyb.Accel()
-
 
 
 def run():

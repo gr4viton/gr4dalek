@@ -84,7 +84,7 @@ class DCMotor():
 #        g = pyb.Pin("LeftMotorDir", pyb.Pin.OUT_OD)
 
 
-    def vel(q, vel=0):
+    def vel(q, vel=0, info=False):
         if vel < -100:
             vel = -100
         elif vel > 100:
@@ -104,6 +104,8 @@ class DCMotor():
                 q.in2.value(1)
             if vel != q.velocity:
                 q.en.pulse_width_percent(abs(vel))
+                if info:
+                    print(q)
 
 #        print(vel, ' = ', q.name, ' velocity')
         q.velocity = vel
