@@ -102,13 +102,15 @@ class GamepadControl():
             q.rot = 0
         
 
-        q.vels = [q.vels[0], -q.vels[1]]
+        q.vels = [-q.vels[0], +q.vels[1]]
 
+        q.rot = radians(10)
+        
         strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
         # Determine the four drive power levelsa
 
         # offset_angle
-        q.vel_angle = radians(q.vel_angle+180)
+        q.vel_angle = radians(q.vel_angle)
         angle = q.vel_angle + math.pi/4
         
         # FR FL BR BL = vels
