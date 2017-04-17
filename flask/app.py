@@ -25,8 +25,12 @@ def gen(camera):
     while True:
         #time.sleep(0.1)
         frame = camera.get_frame()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        if frame is None:
+            yield 'no-picture'
+        else:
+            yield (b'--frame\r\n'
+                   b'Access-Control-Allow-Origin: *\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 @nocache

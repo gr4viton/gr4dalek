@@ -87,10 +87,7 @@ class VisualChain():
         self.client_wants = self.stream_dir + 'client_wants'
 
         self.db[dd.fifo_buff] = self.fifo_buff
-        self.db[dd.server_waits] = self.server_waits
-        self.db[dd.client_wants] = self.client_wants
-        self.db[dd.no_response_counter] = 0
-        self.db[dd.no_response_max] = 10
+        self.db[dd.fifo_free_suffix] = 0
 
 
     def create_steplist(self, str_steplist):
@@ -200,6 +197,19 @@ class VisualControl():
             ret, jpeg = cv2.imencode('.jpg', im)
             im_data = jpeg.tobytes()
             
+#            return save_locking(db, im_data)
+            return save_now(db, im_data)
+
+        def save_now(db, im_data):
+            fifo_buff = db[dd.fifo_buff]
+            if not os.path.exists(fifo_buff):
+                os.mkfifo(fifo_buff)
+            open(fifo_buff, 'wb', 0).write(im_data)
+
+            return db
+
+
+        def save_locking(db, im_data):
             server_waits = os.path.exists(db[dd.server_waits])
             client_wants = os.path.exists(db[dd.client_wants])
 

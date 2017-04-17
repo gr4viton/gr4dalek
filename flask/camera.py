@@ -16,8 +16,12 @@ class Camera():
         self.server_waits = self.stream_dir + 'server_waits'
         self.client_wants = self.stream_dir + 'client_wants'
 
-
     def get_frame(self):
+        if os.path.exists(self.fifo_buff):
+            self.frame = open(self.fifo_buff, 'rb', 0).read()
+        return self.frame
+        
+    def get_frame_locking(self):
         client_wants = os.path.exists(self.client_wants)
         server_waits = os.path.exists(self.server_waits)
         if not server_waits:
