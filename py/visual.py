@@ -76,6 +76,22 @@ class VisualChain():
     def __init__(self, str_steplist):
         self.create_steplist(str_steplist)
         self.db = dict()
+        self.__init_ipc__()
+
+    def __init_ipc__(self):
+
+        self.stream_dir = '/home/pi/stream/'
+
+        self.fifo_buff = self.stream_dir + 'jpg'
+        self.server_waits = self.stream_dir + 'server_waits'
+        self.client_wants = self.stream_dir + 'client_wants'
+
+        self.db[dd.fifo_buff] = self.fifo_buff
+        self.db[dd.server_waits] = self.server_waits
+        self.db[dd.client_wants] = self.client_wants
+        self.db[dd.no_response_counter] = 0
+        self.db[dd.no_response_max] = 10
+
 
     def create_steplist(self, str_steplist):
         """ Creates visual steps list
@@ -97,7 +113,7 @@ class VisualChain():
         self.db = db
         self.out = self.db[dd.im]
         
-    
+
 
 class DataBlock(dict):
     def __init__(self, datablock):
@@ -136,7 +152,8 @@ class VisualControl():
     def init_chains(self):
         #VisualChain.alamanach = self.almanach
 
-        str_steplist = 'capture, gray, save, rename' 
+        #str_steplist = 'capture, gray, save, rename' 
+        str_steplist = 'capture, gray, resize, save_fifo' 
         self.chain = VisualChain(str_steplist)
 
     def init_almanach(self):
@@ -176,7 +193,44 @@ class VisualControl():
             cv2.imwrite(save_path, im)
             #print('image saved to <', save_path, '> !!!')
             return db
-         
+
+        def save_fifo(db):
+            im = _get_im_(db)
+
+            ret, jpeg = cv2.imencode('.jpg', im)
+            im_data = jpeg.tobytes()
+            
+            server_waits = os.path.exists(db[dd.server_waits])
+            client_wants = os.path.exists(db[dd.client_wants])
+
+            #if server_waits and not client_wants:
+                # delete server_waits
+             #   os.remove(db[dd.server_waits])
+
+            if not server_waits:
+                if not client_wants:
+                    fifo_buff = db[dd.fifo_buff]
+                    with open(fifo_buff, 'wb', 0) as f:
+                        f.write(im_data)
+                    print('written')
+                else:
+                    os.mkfifo(db[dd.server_waits])
+                    print('server waits')
+            elif 0:
+                # client may be dead
+                no_response_counter = db[dd.no_response_counter] + 1
+                no_response_max = db[dd.no_response_max]
+                no_response_max = 1
+                print('client_wants', no_response_counter)
+                if no_response_counter >= no_response_max:
+                    db[dd.no_response_counter] = 0
+                    os.remove(db[dd.server_waits])
+                    if client_wants:
+                        os.remove(db[dd.client_wants])
+
+
+            return db
+
         def rename(db):
             save_path = db.get(dd.save_path, None)
             rename_path = db.get(dd.rename_path, None)
@@ -198,6 +252,12 @@ class VisualControl():
             return db
         
 
+        def resize(db):
+            im = _get_im_(db)
+            im = cv2.resize(im, (300,200))
+            return db
+
+
         def add_visual_step(name, fnc, verbal=False, store_output=False):
             self.almanach[name] = VisualStep(name, fnc, verbal, store_output)
 
@@ -205,8 +265,10 @@ class VisualControl():
 
         avs('gray', gray)
         avs('save', save)
+        avs('resize', resize)
         avs('rename', rename)
         avs('capture', capture)
+        avs('save_fifo', save_fifo)
 
 
         global almanach
