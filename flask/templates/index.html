@@ -1,0 +1,33 @@
+<html>
+<head>
+    <link rel="stylesheet" href='/static/style.css' />
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+    <h2>The date and time on the server is: {{ time }}</h2>
+
+    <h3>Cam image</h3>
+ 
+    <h3>Video Streaming Demonstration</h3>
+         <img src="{{ url_for('video_feed') }}">
+    <h3>CHITCHAT</h3>
+    <p>
+    You are the {{ range(1,999999) | random }} visitor!
+    <br>
+    Personally I think you suck, {{name}}!
+    <br>
+    
+    ...
+    <br>
+
+    You say, your name is <a href='/name/Fjodorovicz'>Fjodorovicz</a>?
+    <br>
+
+    You say, your name is <a href='/name/{{random_name}}'>{{random_name}}</a>?
+    <br>
+    
+    </p>
+
+</body>
+</html>

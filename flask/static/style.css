@@ -1,0 +1,9 @@
+body {
+background: black;
+    color: green;
+}
+
+* {
+/*    font-size: 80%; */
+    font-family: Consolas, monaco, monospace;
+}
