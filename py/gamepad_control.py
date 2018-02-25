@@ -67,6 +67,7 @@ class GamePadSwHotkey(object):
                         ', fdata= ', self.fdata,]])
            
 class GamePadSwChildControl():
+    """To sw merge multiple hw controls - RHstick and RVstick produces sw Rstick."""
     def __init__(self, abbreviation, name, parents):
         self.abbr = abbreviation
         self.name = name
@@ -74,9 +75,11 @@ class GamePadSwChildControl():
         self.parent_names = parents
 
     def __str__(self):
-        return ''.join([str(word) for word in [
-                        self.abbr,' = ',self.name, ' = ', self.data
-                        ]])
+        return '{abbr} = {name} = {data}'.format(
+            abbr=self.abbr,
+            name=self.name,
+            data=self.data
+        )
 
 
 class GamePadHwButton():
@@ -135,24 +138,29 @@ class GamePadHwButton():
            
 class GamePadControler():
     
-    def format_directionXY(xdata, ydata):
-        if xdata is None:
-            x = 0
-        else:
-            x = xdata
-
-        if ydata is None:
-            y = 0
-        else:
-            y = ydata
+    def format_directionXY(xdata, ydata, invx=False, invy=False):
+        x = xdata or 0
+        y = ydata or 0
+        if invx:
+            x = -x
+        if invy:
+            y = -y
 
         return [x,y]
 
-    def format_directionXYDegree(xdata, ydata):
-        xy = GamePadControler.format_directionXY(xdata, ydata)
+    def format_directionXYDegree(xdata, ydata, invx=False, invy=False):
+        xy = GamePadControler.format_directionXY(xdata, ydata, invx, invy)
         deg = degrees(atan2(float(xy[0]),float(xy[1])))
         return xy + [deg]
 
+    def format_directionXYDegree_invX(xdata, ydata):
+        return GamePadControler.format_directionXYDegree(xdata, ydata, True)
+
+    def format_directionXYDegree_invY(xdata, ydata):
+        return GamePadControler.format_directionXYDegree(xdata, ydata, False, True)
+
+    def format_directionXYDegree_invXY(xdata, ydata):
+        return GamePadControler.format_directionXYDegree(xdata, ydata, True, True)
 
     def format_trigger_upleft_arrows(data):
         if data == [1, 128]:
@@ -168,20 +176,25 @@ class GamePadControler():
 
 
     def format_2byte(data):
-        if data is not None:
-            val = data[1]*255 + data[0]  
-            valorig = val
-            half = 32640
-            if val == 0:
-                val = 0
-            elif val <= half:
-                val = val 
-            elif val > half:
-                val = val - 2*half -1
-            val = val / half
-            return val
+        if data is None:
+            return None
 
-    format_funcs = {'format_2byte': format_2byte}
+        val = data[1]*255 + data[0]  
+        valorig = val
+        half = 32640
+        if val == 0:
+            val = 0
+        elif val <= half:
+            val = val 
+        elif val > half:
+            val = val - 2*half -1
+        val = val / half
+
+        return val
+    
+    format_funcs = {
+        'format_2byte': format_2byte,
+    }
 
     def __init__(self):
         self.info = 1
@@ -193,10 +206,10 @@ rightstick:Right stick:RVstick:RHstick"""
 
         x = [line.split(':') for line in sw_childs.split('\n')]
         self.childs = {}
-        self.childs.update({abbr :GamePadSwChildControl(abbr, name, hw_btn_names) 
-                                for abbr, name, *hw_btn_names in x})
-
-
+        self.childs.update({
+            abbr: GamePadSwChildControl(abbr, name, hw_btn_names) 
+            for abbr, name, *hw_btn_names in x
+        })
 
         hw_btns_text = \
 """
@@ -225,8 +238,12 @@ rightstick:Right stick:RVstick:RHstick"""
         minimal_line = '1,1:b:A'
         x = [line for line in hw_btns_text.split('\n')]
         x = [line.split(':') for line in x if len(line)>=len(minimal_line)]
-        self.states = {tuple([int(add) for add in address.split(',')]):list(data) 
-                            for address, *data in x}
+        self.states = {
+            tuple(
+                [int(add) for add in address.split(',')]
+                ): list(data) 
+            for address, *data in x
+        }
         print(self.states)
         
         
@@ -241,22 +258,24 @@ rightstick:Right stick:RVstick:RHstick"""
         sw_hotkeys = \
 """up:UP arrow:updown:format_trigger_upleft_arrows
 down:DOWN arrow:updown:format_trigger_downright_arrows
-rightstick:Right stick:RHstick,RVstick:format_directionXYDegree
-leftstick:Left stick:LHstick,LVstick:format_directionXYDegree
+rightstick:Right stick:RHstick,RVstick:format_directionXYDegree_invY
+leftstick:Left stick:LHstick,LVstick:format_directionXYDegree_invY
 left:LEFT arrow:leftright:format_trigger_upleft_arrows
 right:RIGHT arrow:leftright:format_trigger_downright_arrows"""
 
         x = [line.split(':') for line in sw_hotkeys.split('\n')]
-        self.btns.update({abbr : GamePadSwHotkey(
-                                abbr, name, 
-                                [self.btns[hw_btn] for hw_btn in hw_btns.split(',')],
-                                GamePadControler.__dict__[format_func]
-                                )
-                            for abbr, name, hw_btns, format_func in x})
-
+        self.btns.update({
+            abbr : GamePadSwHotkey(
+                abbr, name, 
+                [self.btns[hw_btn] for hw_btn in hw_btns.split(',')],
+                GamePadControler.__dict__[format_func]
+            )
+            for abbr, name, hw_btns, format_func in x
+        })
 
         [print(str(btn)) for btn in self.btns.values()]
         [print(str(stc)) for stc in self.childs.values()]
+        
     def open(self):
         self.pipe = open('/dev/input/js0', 'rb') #open joystick
         action = []
@@ -289,9 +308,6 @@ right:RIGHT arrow:leftright:format_trigger_downright_arrows"""
 
         self.print(self.childs['leftstick'])
         self.print(self.childs['rightstick'])
-        
-
-
         
     def read_data(self):
         action = []

@@ -1,6 +1,4 @@
 from state import State
-from dcmotor import DCMotor
-from robot_drives import MecDrive
 
 import shared_globals
 

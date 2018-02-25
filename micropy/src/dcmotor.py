@@ -48,7 +48,7 @@ class FakePin():
 
 class DCMotor():
 
-    def __init__( q, name, in1_pin, in2_pin, 
+    def __init__(q, name, in1_pin, in2_pin, 
             tim_num, tim_channel, tim_pin, 
             dir_en=1, tim_freq=30000): 
 

@@ -27,5 +27,4 @@ fi
 
 sync
 
-minicom -D /dev/ttyACM0  # rpi3
-# minicom -D /dev/tty1  # before rpi3
+./connect.sh

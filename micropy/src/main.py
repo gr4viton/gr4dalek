@@ -4,7 +4,7 @@ from pyb import I2C, SPI, UART
 
 import staccel
 import math
-from math import sin, cos, radians
+from math import sin, cos, radians, degrees
 
 import os
 #import gc # garbage collection for writing?
@@ -23,7 +23,7 @@ import binascii as ba
 #import lcd_i2c
 
 from dcmotor import DCMotor
-from robot_drives import MecDrive
+from robot_drives import DriveUnlinked
 from btn_control import ButtonControl
 
 from state import State
@@ -73,9 +73,8 @@ class GamepadControl():
         q.maxmin_pwr = q.max_pwr-q.min_pwr
         q.vels = [0,0,0,0]
 
-
     def calc_vels(q):
-
+        """Mecanum wheel calculation."""
         *q.vels, q.vel_angle = q.strafe_stick_vals
         rot_val, speed_val, _ = q.speed_rot_stick_vals
         print(rot_val)
@@ -85,6 +84,10 @@ class GamepadControl():
             q.speed_factor = (abs(q.speed_val) + 1)/2
         else:
             q.speed_factor = 1
+
+        print('slow', q.slow)
+        print('speed_factor', q.speed_factor)
+        print('vel_min', q.vel_min)
 
         for vel in q.vels:
             if vel < q.vel_min: 
@@ -99,30 +102,40 @@ class GamepadControl():
         q.rot = radians(0)
         
         strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
+        print('strafe_speed', strafe_speed)
         # Determine the four drive power levelsa
 
         # offset_angle
         q.vel_angle = radians(q.vel_angle)
         angle = q.vel_angle + math.pi/4
         
+        print('angle', degrees(angle))
+
         # FR FL BR BL = vels
         gons = [cos, sin, sin, cos]
         facs = [1, -1, -1, 1]
-        q.vels = [ strafe_speed * gon(angle) + fac * q.rot 
-                                for fac, gon in zip(facs, gons)]
+        q.vels = [ 
+            strafe_speed * gon(angle) + fac * q.rot 
+            for fac, gon in zip(facs, gons)
+        ]
+        print('vels', q.vels)
 
         # Scale the drive power if any exceed 100%
         max_scale = max([abs(vel) for vel in q.vels])
+        print('max_scale', max_scale)
         if max_scale > 1.0:
-            q.vels = [vel * q.speed_factor / max_scale 
-                                        for vel in q.vels]
+            q.vels = [
+                vel * q.speed_factor / max_scale 
+                for vel in q.vels
+            ]
 
+        q.vels = [ 
+            ((abs(vel) - q.vel_min) * q.maxmin_pwr + q.min_pwr) 
+            * math.copysign(1, vel) * int(vel != 0)
+            for vel in q.vels
+        ]
+        print('vels final', q.vels)
 
-        q.vels = [ ((abs(vel)-q.vel_min)
-                    * q.maxmin_pwr + q.min_pwr) 
-                    * math.copysign(1, vel)
-                    * int(vel != 0)
-                    for vel in q.vels]
 
     def __str__(q):
         mot_names = 'FR FL BR BL'.split()
@@ -203,7 +216,7 @@ class Machine():
 
 
     def init_DCs(q):
-        q.drive = MecDrive()
+        q.drive = DriveUnlinked()
 
 
     def init_spi(q):

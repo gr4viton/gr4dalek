@@ -18,6 +18,10 @@ print(c.frame())
 class DirectionView():
 
     def __init__(self):
+        
+        self.invx = False
+        self.invy = True
+
         self.can = Canvas()
         self.can.clear()
 
@@ -55,31 +59,48 @@ class DirectionView():
     def round(self, value):
         return round(value * self.dp) / self.dp
 
+    def get_xy(self, x, y):
+        return self.sdx + x, self.sdy - y
+
+    def set_cursor(self, show):
+        if show:
+            [self.can.set(*self.get_xy(x, y)) for x, y in self.zip_xs_ys]
+        else:
+            [self.can.unset(*self.get_xy(x, y)) for x, y in self.zip_xs_ys]
+        
+    @property
+    def multx(self):
+        return 1 if not self.invx else -1
+        
+    @property
+    def multy(self):
+        return 1 if not self.invy else -1
+
     def show_direction(self, direction):
 #        print(dir(self.can))
-        [self.can.unset(self.sdx + x, self.sdy + y) for x, y in self.zip_xs_ys]
+        self.set_cursor(False)
         
-
         if direction is None:
             return
         self.x, self.y = direction[0:2]
-        dx, dy = [ d* maxd for d, maxd in zip(direction[0:2], self.half_d) ]    
 
+        dx, dy = [ d * maxd for d, maxd in zip(direction[0:2], self.half_d) ]    
         if dx is None and dy is None:
             return
 
-        if len(direction)<3:
+        if len(direction) < 3:
             rad = atan2(float(dy), float(dx))
             deg = degrees(rad)
         else:
             deg = direction[2]
             rad = radians(deg)
 
-        self.sdx = round(dx + self.half_x)
-        self.sdy = round(dy + self.half_y)
+        self.sdx = round(self.multx * dx + self.half_x)
+
+        self.sdy = round(self.multy * dy + self.half_y)
             
         #self.can.set(self.sdx, self.sdy)
-        [self.can.set(self.sdx + x, self.sdy + y) for x, y in self.zip_xs_ys]
+        self.set_cursor(True)
         
         dp = self.dp
         print(self.can.frame())
