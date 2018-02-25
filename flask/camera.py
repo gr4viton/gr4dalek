@@ -13,10 +13,27 @@ class Camera():
         self.stream_dir = '/home/pi/stream/'
 
         self.fifo_buff = self.stream_dir + 'jpg'
+        self.suffix = str(0)
+        self.suffix_file = self.stream_dir + 'read_suffix'
+
         self.server_waits = self.stream_dir + 'server_waits'
         self.client_wants = self.stream_dir + 'client_wants'
 
     def get_frame(self):
+        if os.path.exists(self.suffix_file):
+            # os.O_NONBLOCK | os.O_WRONLY
+            suffix = open(self.suffix_file, 'rb', 0).read()
+            self.suffix = str(int(suffix))
+            os.remove(self.suffix_file)
+
+        fifo_buff = self.fifo_buff + self.suffix + 'a'
+        if os.path.exists(fifo_buff):
+            self.frame = open(self.fifo_buff, 'rb', 0).read()
+        else:
+            self.frame = self.default_frame
+        return self.frame
+
+    def get_frame_now(self):
         if os.path.exists(self.fifo_buff):
             self.frame = open(self.fifo_buff, 'rb', 0).read()
         return self.frame

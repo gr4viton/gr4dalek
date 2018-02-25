@@ -91,3 +91,6 @@ LB E2 E3 4 4 B9 1"""
             #if vel != 0:
              #   print(dc)
 
+    def stop(q):
+        q.go([0, 0, 0, 0])
+

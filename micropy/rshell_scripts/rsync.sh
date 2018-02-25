@@ -4,4 +4,6 @@ rsync -m -v /home/pi/DEV/gr4dalek/micropy/src/ /flash/
 echo Removing *.swp and *.swo from /flash
 rm /flash/*.swp
 rm /flash/*.swo
+rm /flash/__pycache__
+rm /flash/a.py
 echo Done

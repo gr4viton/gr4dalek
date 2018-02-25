@@ -94,13 +94,35 @@ class GamePadHwButton():
                 format_function = GamePadControler.format_funcs[format_function]
             self.ffunc = format_function
         self.fdata = None
+        self._changed = False
 
+    @property
+    def changed(self):
+        chng = self._changed
+        if chng:
+            self._changed = False
+        return chng 
+
+    @property
+    def changed_down(self):
+        """
+
+        !should not be used after self.changed
+        """ 
+        return self.changed and self.state
+
+    @property
+    def changed_up(self):
+        return not self.changed_down
 
     def update(self, data):
         self.data = data
-        self.state = sum(data) > 0
+        new_state = sum(data) > 0
+        self._changed = new_state != self.state
+        self.state = new_state
         if self.ffunc is not None:
             self.fdata = self.ffunc(self.data)
+
 
     def __repr__(self):
         return ''.join([str(word) for word in [

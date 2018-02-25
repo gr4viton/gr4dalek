@@ -1,13 +1,108 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import cv2
-
 import numpy as np
+import os
 import time
 
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 from StepEnum import DataDictParameterNames as dd
-import os
 
 global almanach
 almanach = None
+
+class RpiCameraControl():
+
+    def __init__(self, id=-1, db={}):
+        self.id = id
+        self.frame = None
+
+        self.open_capture()
+        self.close()
+            
+        self.fps = 0
+        self.frame_count = 0
+    
+        self.db = db
+
+    def setup_cam_params(self):
+        if self.db is None:
+           db = { 
+               dd.resolution: (640,480),
+               dd.framerate: 25,
+           }
+        #self.db = DataBlock(db)
+        self.db = dict(db)
+
+    def apply_cam_params(self):
+        self.cam.resolution = self.db[dd.resolution]
+        self.cam.framerate = self.db[dd.framerate]
+        self.raw = PiRGBArray(self.cam, size=(self.db[dd.resolution]))
+
+    def is_opened(self):
+        return True
+        
+    def open_capture(self):
+        self.cam = PiCamera()
+        self.setup_cam_params()
+
+        self.apply_cam_params()
+
+
+        # warmup camera
+        time.sleep(0.1)
+            
+        self.cam.capture_continuous(self.raw, format="bgr", use_video_port=True)
+
+        self.raw.truncate(0)
+        print('cam inited')
+        return
+        if self.is_opened(): # self.cap.isOpened():
+            print('Camera id ', self.id, ' opened!')
+        else:
+            print('Camera id ', self.id, ' can not be opened!')
+
+
+    def open_ifnot(self):
+        if not self.is_opened():
+            self.open()
+
+    def close(self):
+        #self.cap.release()
+        if not self.is_opened():
+            print('Capture id ', self.id, ' closed!')
+        else:
+            print('Capture id ', self.id, ' could not be closed!')
+
+    def capture_frame(self):
+        #ret, frame = self.cap.read()
+        for frame in self.cam.capture_continuous(self.raw, format='bgr', use_video_port=True):
+            self.raw.truncate(0)
+        return frame
+
+    def get_frame(self):
+        self.open_ifnot()
+
+        self.frame = self.capture_frame()
+        
+        while not True:
+            ret, frame = self.cap.read()
+            print(frame.shape)
+
+        if ret:
+            self.frame_count += 1
+            print('Camera id ', self.id, ' captured frame ', 
+                self.frame_count) #, self.frame.shape)
+        else:
+            print('Camera id ', self.id, ' capture failed')
+            #self.db[dd.stop_it] = 'capture failed'
+            self.close()
+            time.sleep(1)
+        
+        return frame
+
+
 
 class CameraControl():
 
@@ -15,7 +110,7 @@ class CameraControl():
         self.id = id
         self.frame = None
 
-        self.open()
+        self.open_capture()
         self.close()
             
         self.fps = 0
@@ -26,7 +121,7 @@ class CameraControl():
         #self.db = DataBlock(db)
         self.db = dict(db)
 
-    def open(self):
+    def open_capture(self):
         self.cap = cv2.VideoCapture(self.id)
         # warmup camera
         time.sleep(0.1)
@@ -67,6 +162,7 @@ class CameraControl():
             #self.db[dd.stop_it] = 'capture failed'
             self.close()
             time.sleep(1)
+        
         return frame
 
 
@@ -87,7 +183,8 @@ class VisualChain():
         self.client_wants = self.stream_dir + 'client_wants'
 
         self.db[dd.fifo_buff] = self.fifo_buff
-        self.db[dd.fifo_free_suffix] = 0
+        self.db[dd.fifo_suffix_file] = self.stream_dir + 'read_suffix'
+        self.db[dd.fifo_write_suffix] = 0
 
 
     def create_steplist(self, str_steplist):
@@ -104,6 +201,7 @@ class VisualChain():
 
         db = self.db
         for step in self.steps:
+            print(step.name)
             if not db[dd.stop_it]:
                 db = step.run(db)
 
@@ -144,13 +242,15 @@ class VisualControl():
 
     def init_cams(self):
         self.cam = CameraControl(0)
+        self.cam = RpiCameraControl()
         self.chain.db[dd.stream] = self.cam
         
     def init_chains(self):
         #VisualChain.alamanach = self.almanach
 
-        #str_steplist = 'capture, gray, save, rename' 
-        str_steplist = 'capture, gray, resize, save_fifo' 
+        str_steplist = 'capture, gray, save, rename' 
+        #str_steplist = 'capture, gray, resize, save_fifo' 
+        #str_steplist = 'capture, gray, save_fifo'
         self.chain = VisualChain(str_steplist)
 
     def init_almanach(self):
@@ -196,9 +296,11 @@ class VisualControl():
 
             ret, jpeg = cv2.imencode('.jpg', im)
             im_data = jpeg.tobytes()
-            
-#            return save_locking(db, im_data)
-            return save_now(db, im_data)
+
+ #           return save_locking(db, im_data)
+            #return save_now(db, im_data)
+            return save_double_buffer(db, im_data)
+            #return db
 
         def save_now(db, im_data):
             fifo_buff = db[dd.fifo_buff]
@@ -208,6 +310,47 @@ class VisualControl():
 
             return db
 
+        def save_double_buffer(db, im_data):
+            suffix = db[dd.fifo_write_suffix] 
+
+            fifo_buff = db[dd.fifo_buff] + str(int(suffix)) + 'a'
+            if not os.path.exists(fifo_buff):
+                os.mkfifo(fifo_buff)
+            
+            print('Going to save image into: ', fifo_buff)
+            def ahoj():
+                path = '/home/pi/stream/jpg'
+                print(path)
+
+                txt = 'as\n'*10
+                with open(path, 'wb') as f:
+                    f.write(bytes(txt, 'utf-8'))
+
+
+            ahoj()
+            print('wawaw')
+
+            with open(fifo_buff, 'wb') as f:
+                f.write(bytes('ahoj', 'utf-8'))
+
+            print('w')
+
+            open(fifo_buff, 'wb').write(im_data)
+            print('sadasdasd')
+
+            suffix_file = db[dd.fifo_suffix_file]
+            if not os.path.exists(suffix_file):
+                os.mkfifo(suffix_file)
+                open(suffix_file, 'wb', 0).write(suffix)
+                
+                #with open(suffix_file, 'wb', 0) as f:
+                #    f.write(suffix)
+                 #   f.close()
+
+                suffix = not suffix
+                db[dd.fifo_write_suffix] = suffix
+
+            return db
 
         def save_locking(db, im_data):
             server_waits = os.path.exists(db[dd.server_waits])
@@ -256,6 +399,7 @@ class VisualControl():
             if not stream:
                 _stop_it_(db, 'no stream')
             im = stream.get_frame()
+
             if im is None:
                 _stop_it_(db, 'stream image capture failuter')
             db[dd.im] = im

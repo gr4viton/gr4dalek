@@ -48,17 +48,8 @@ print('Micropython alloc_emergency_exception_buffer set to 100')
 #a = [[[1,2],[1,2]],[[1,2],[1,2]]]
 #print(shared_globals.print_shape(a))
 
-class Stm2Rpi():
-    num_del = '_'
-    cmd_end = '\n'
-    gamepad_input_del = ':'
-    speed_rot_stick = 'R'
-    strafe_stick = 'L'
-    state_cmd = '>>>>>'
-    gamepad = 'J'
+from actions import Actions as Act
 
-    ok = 'ok'
-    nok = 'KO'
 
 class GamepadControl():
 
@@ -102,9 +93,10 @@ class GamepadControl():
             q.rot = 0
         
 
-        q.vels = [-q.vels[0], +q.vels[1]]
+        # q.vels = [-q.vels[0], +q.vels[1]]
 
         q.rot = radians(10)
+        q.rot = radians(0)
         
         strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
         # Determine the four drive power levelsa
@@ -143,39 +135,41 @@ class GamepadControl():
     def process_stick_cmd(q, cmd):
         q.cmd = cmd
         print('got cmd', cmd)
-        input_type, str_vals = cmd.split(Stm2Rpi.gamepad_input_del)
-        vals = [float(val) for val in str_vals.split(Stm2Rpi.num_del)]
+        input_type, str_vals = cmd.split(Act.gamepad_input_del)
+        vals = [float(val) for val in str_vals.split(Act.num_del)]
 
 
-        if Stm2Rpi.strafe_stick in input_type:
+        if Act.strafe_stick in input_type:
             q.strafe_stick_vals = vals
-        elif Stm2Rpi.speed_rot_stick in input_type:
+        elif Act.speed_rot_stick in input_type:
             q.speed_rot_stick_vals = vals
 
 
         q.calc_vels()
         print(q)
         #q.drive.go(q.wheel_vels)
-            
-
     
 
 class Machine():
     n = 0
     leds = None
 #    move_arrow_pressed = None
+    turn_delay = 10
+    turn_time = pyb.millis()
+    turned = None
 
     def on_press(q):
         print('pressed!')
 #        print('Machine.turned', Machine.turned)
         act = pyb.millis()
-        if (act - Machine.turn_time) > Machine.turn_delay:
+
+        prev = Machine.turn_time
+        if (act - prev) > Machine.turn_delay:
             Machine.turned = True
             Machine.turn_time = act
         print('Machine.turned', Machine.turned)
-        
+        q.send_ack()
         # print(q.ac.xyz()) # MemoryError:
-
 
     def on_tim4(q):
         #lambda t:pyb.LED(3).toggle()
@@ -191,6 +185,8 @@ class Machine():
     
     
     def __init__(q):
+        q.motors_enabled = False
+
 #        q.show_gpio()
 
         q.init_leds()
@@ -204,6 +200,7 @@ class Machine():
  #       q.init_lcd()
 
         q.main_loop()
+
 
     def init_DCs(q):
         q.drive = MecDrive()
@@ -268,9 +265,10 @@ class Machine():
                 print(dc)
     
     def init_uart(q):
-        q.uart = UART(6, 9600)
+        q.baud = 115200
+        q.uart = UART(6, q.baud)
         q.uart.deinit()
-        q.uart.init(115200, bits=8, parity=None, stop=1,
+        q.uart.init(q.baud, bits=8, parity=None, stop=1,
                 read_buf_len=100, flow=0, timeout=10 )
         q.buf = []
         
@@ -278,14 +276,14 @@ class Machine():
 
 
     def send_ack(q):
-        q.uart.write(Stm2Rpi.ok)
+        q.uart.write(Act.ok)
         print('sent ACK!')
 
     def send_nack(q):
-        q.uart.write(Stm2Rpi.nok)
+        q.uart.write(Act.nok)
         print('sent NACK!')
     
-    def uart_process(q):
+    def uart_process(q, print_got_char=False):
         #print(q.uart)
 
         parity_check = False
@@ -293,9 +291,10 @@ class Machine():
         new_command = False
         while q.uart.any() and not new_command:
             c = chr(q.uart.readchar())
-            #print('got char', c)
+            if print_got_char:
+                print('got char', c)
             if parity_check != True:
-                if c == Stm2Rpi.cmd_end:
+                if c == Act.cmd_end:
                     q.cmd = ''.join(q.buf)
  #                   print('>>! got some cmd', q.cmd)
                     q.buf = []
@@ -322,10 +321,24 @@ class Machine():
     def cmd_process(q):
         if q.cmd:
             q.joystick = True
-            if Stm2Rpi.state_cmd in q.cmd:
-                if Stm2Rpi.gamepad in q.cmd:
-                    q.joystick = True
-                    print('joystick control initialized')
+
+            action = None
+            if Act.turn_on in q.cmd:
+                print('turn on cmd')
+                action = True
+            elif Act.turn_off in q.cmd:
+                print('turn off cmd')
+                action = False
+
+            if action is not None:
+                if Act.gamepad in q.cmd:
+                    q.joystick = action
+                    print('joystick control initialized to ', action)
+                elif Act.motor_control in q.cmd:
+                    q.motors_enabled = action
+                    print('motor control initialized to ', action)
+                    if not q.motors_enabled:
+                        q.drive.stop()
             else:
                 if q.joystick:
                     q.jcontrol.process_stick_cmd(q.cmd)
@@ -343,16 +356,19 @@ class Machine():
 
             # gpio button control
 #            r,d,l,u = q.btns_pressed
+
             change = q.control.querry_state()
             state = q.control.state
             if change is not None:
-                #q.drive.go(state.vels)
+                #if q.motors_enabled:
+                #    q.drive.go(state.vels)
                 q.state_changed(*change)
             
             # gamepad stick control
             q.uart_process()
             q.cmd_process()
-            q.drive.go(q.jcontrol.vels)
+            if q.motors_enabled:
+                q.drive.go(q.jcontrol.vels)
 
             if a % 500000 == 0:        
                 pass
