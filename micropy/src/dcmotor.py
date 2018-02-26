@@ -50,7 +50,7 @@ class DCMotor():
 
     def __init__(q, name, in1_pin, in2_pin, 
             tim_num, tim_channel, tim_pin, 
-            dir_en=1, tim_freq=30000): 
+            dir_en=1, tim_freq=10000): 
 
          #       print(q.__dict__)
         q.name = name.strip()
@@ -84,7 +84,7 @@ class DCMotor():
 #        g = pyb.Pin("LeftMotorDir", pyb.Pin.OUT_OD)
 
 
-    def vel(q, vel=0, info=False):
+    def vel(q, vel=0, info=True):
         if vel < -100:
             vel = -100
         elif vel > 100:
@@ -104,6 +104,8 @@ class DCMotor():
                 q.in2.value(1)
             if vel != q.velocity:
                 q.en.pulse_width_percent(abs(vel))
+                print(vel)
+                print(abs(vel))
                 if info:
                     print(q)
 

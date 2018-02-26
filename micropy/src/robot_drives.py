@@ -73,15 +73,7 @@ class Drive(object):
 
 class DriveUnlinked(Drive):
 
-    def __init__(q):
-        # rf lf rb lb       
-        drive_config = """
-            RF D7 D5 4 1 B6 1
-            LF D3 D1 4 2 B7 1
-            RB E0 E1 4 3 B8 1
-            LB E2 E3 4 4 B9 1
-        """
-        # E0 brown -> red D7 u front
+    def __init__(q, drive_config):
         super().__init__(drive_config)
 
     def go(q, vels):

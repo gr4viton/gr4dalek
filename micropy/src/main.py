@@ -22,7 +22,6 @@ import binascii as ba
 
 #import lcd_i2c
 
-from dcmotor import DCMotor
 from robot_drives import DriveUnlinked
 from btn_control import ButtonControl
 
@@ -198,25 +197,45 @@ class Machine():
     
     
     def __init__(q):
+        q.leds = None
+
+        # rf lf rb lb       
+        # nam in1, in2, tim_num, tim_ch, tim_pin, dir_en
+        drive_config = """
+            RF D7 D5 4 1 B6 1
+            LF D3 D1 4 2 B7 1
+            RB E0 E1 4 3 B8 1
+            LB E2 E3 4 4 B9 1
+        """
+        drive_config = """
+            RF D5 D7 3 1 B4 1
+            LF D1 D3 3 2 B5 1
+            RB E0 E1 3 3 B0 1
+            LB E2 E3 3 4 B1 1
+        """
+        # E0 brown -> red D7 u front
+        q.drive_config = drive_config
+
         q.motors_enabled = False
 
 #        q.show_gpio()
-
-        q.init_leds()
 #        q.init_spi()
+ #       q.init_lcd()
+
+       # q.init_leds()
         q.init_uart()
 
-        q.init_buttons()
+      #  q.init_buttons()
         q.init_control()
 
         q.init_DCs()
- #       q.init_lcd()
 
         q.main_loop()
 
 
     def init_DCs(q):
-        q.drive = DriveUnlinked()
+
+        q.drive = DriveUnlinked(q.drive_config)
 
 
     def init_spi(q):
@@ -389,7 +408,8 @@ class Machine():
 
             if a == 1000000:
                 print(str(a) + 'cycles')
-                q.leds[0].toggle()
+                if q.leds:
+                    q.leds[0].toggle()
                 a = 0
             pass
 
