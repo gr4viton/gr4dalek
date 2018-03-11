@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import time
 import wiringpi as wp
 
 from actions import Actions as Act
@@ -26,14 +27,14 @@ class StmCom():
             self.uart = ret
             print('UART init with id = {id_}'.format(id_=ret))
         self.CTS = True
-        
+
         self.start(Act.gamepad)
 
         # [print(a) for a in dir(wp)]
-    
+
     def start(self, cmd):
         self.cmd(cmd, True)
-        
+
     def stop(self, cmd):
         self.cmd(cmd, False)
 
@@ -45,19 +46,18 @@ class StmCom():
         data = '{act} {cmd}'.format(act=action, cmd=cmd)
         self.send_cmd(data)
 
-
     def on_exit(self, uart=None):
         if uart is None:
             uart = self.uart
         wp.serialClose(uart)
 
     def init_spi(self):
-#            https://projects.drogon.net/raspberry-pi/wiringpi/pins/
+        """he here: https://projects.drogon.net/raspberry-pi/wiringpi/pins/ ."""
         wp.wiringPiSetup()
 
-        self.SPIchannel = 1 #SPI Channel (CE1)
-        SPIspeed = 500000 #Clock Speed in Hz
-        spi_mode = 0 # cpol 0, cpha 0, cedg 1
+        self.SPIchannel = 1  # SPI Channel (CE1)
+        SPIspeed = 500000  # Clock Speed in Hz
+        spi_mode = 0  # cpol 0, cpha 0, cedg 1
 
         ret = wp.wiringPiSPISetupMode(self.SPIchannel, SPIspeed, spi_mode)
         if ret == -1:
@@ -70,7 +70,7 @@ class StmCom():
         print('starting spi loop')
         i=0
         while True:
-        
+
             self.write_pot(i)
             time.sleep(1)
             i += 1
@@ -78,33 +78,33 @@ class StmCom():
     def write_pot_spi(self, input):
         """ Split an integer input into a two byte array to send via SPI
         """
-        
+
         data = input
         try:
             ret = wp.wiringPiSPIDataRW(self.SPIchannel, 'a')
-        except e:
+        except Exception as ex:
             print('error')
-            print(e)
+            print(ex)
+            print(ret)
         print('got returned')
         print('returned data', data)
-
 
     def send_cmd(self, data):
 
         print('>>> Serial send str: {cmd}'.format(cmd=data))
         self.get_ack()
 
-        if self.CTS == False:
+        if self.CTS is False:
             print('not send - ack not got yet')
             return
 
         checksum = 0
         for ch in data:
             checksum ^= ord(ch)
-                
+
         print('> checksum = {ch}'.format(ch=checksum))
         data = data + self.ch_end + chr(checksum)
-        
+
         self.send_data(data)
 
         self.get_ack()
@@ -117,7 +117,7 @@ class StmCom():
 
     @property
     def data_avail(self):
-        return wp.serialDataAvail(self.uart) 
+        return wp.serialDataAvail(self.uart)
 
     def get_ack(self):
         buf = []
@@ -136,15 +136,15 @@ class StmCom():
                 if Act.ok in str_buf:
                     self.CTS = True
                     print('got ACK')
-                    #wp.serialFlush(self.uart)
+                    # wp.serialFlush(self.uart)
                 elif Act.nok in str_buf:
                     self.CTS = True
                     print('got NACK')
 
-    
     def write_pot_uart(self, name, fdata):
-        
-        abrev = name[0].upper() + Act.gamepad_input_del 
-        data = abrev + Act.num_del.join([ str(round(float(val), 3)) for val in fdata])
+
+        abrev = name[0].upper() + Act.gamepad_input_del
+        vals = [str(round(float(val), 3)) for val in fdata]
+        data = abrev + Act.num_del.join(vals)
 
         self.send_cmd(data)

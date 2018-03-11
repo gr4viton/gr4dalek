@@ -4,21 +4,20 @@
 
 MCP3008 is 8-channel 10-bit analog to digital converter
 Connections are:
-    CLK => SCLK  
+    CLK => SCLK
     DOUT =>  MISO
     DIN => MOSI
     CS => CE0
 """
 
-import time
 import sys
-#import spidev
+# import spidev
 
 from struct import unpack, pack
 from cli_gui import DirectionView
 from gamepad_control import GamePadControler as GPC
- 
-import wiringpi as wp
+
+# import wiringpi as wp
 
 from stmcom import StmCom
 sys.path.append("/home/pi/DEV/gr4dalek/micropy/src")
@@ -36,7 +35,7 @@ class DalekRPi():
         self.init_visual()
 
     def init_visual(self):
-      #  self.vc = VisualControl()
+        #  self.vc = VisualControl()
         self.vc = None
 
     def init_com(self):
@@ -57,8 +56,9 @@ class DalekRPi():
 
         try:
             self.vc.run()
-        except:
+        except Exception as ex:
             print('no visual control')
+            print(ex)
 
         self.update_loop()
 
@@ -69,7 +69,6 @@ class DalekRPi():
         stick_names = ('leftstick', 'rightstick')
         stick_dvs = (self.dv_left, self.dv_right)
         while True:
-            i = 0
 
             self.gpc.update(info=0, clear_screen=True)
             a_btn = self.btn('A')
@@ -83,7 +82,7 @@ class DalekRPi():
                 # self.com.send_data('HEY!')
 
             abbs = 'up down left right'.split()
-            xyzs = [[1,0,0], [-1,0,0], [0,1,0], [0,-1,0]]
+            xyzs = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]]
             btns_dict = {
                 self.btn(abb): xyz
                 for abb, xyz in zip(abbs, xyzs)
@@ -101,10 +100,10 @@ class DalekRPi():
 
             for name, dv in zip(stick_names, stick_dvs):
                 fdata, changed = self.gpc.btns[name].fdata_changed
-                
+
                 if self.show_direction:
                     dv.show_direction(fdata)
-                
+
                 if changed:
                     self.com.write_pot_uart(name, fdata)
 

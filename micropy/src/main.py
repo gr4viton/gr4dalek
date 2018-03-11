@@ -35,7 +35,7 @@ micropython.alloc_emergency_exception_buf(100)
 print('Micropython alloc_emergency_exception_buffer set to 100')
 
 #import operator # dict sorting
-#try: 
+#try:
 #    print('try importing pins')
 #    import pins
 #except ImportError:
@@ -78,7 +78,7 @@ class GamepadControl():
         rot_val, speed_val, _ = q.speed_rot_stick_vals
         print(rot_val)
         q.rot = rot_val * math.pi / 10
-        
+
         if q.slow:
             q.speed_factor = (abs(q.speed_val) + 1)/2
         else:
@@ -89,17 +89,17 @@ class GamepadControl():
         print('vel_min', q.vel_min)
 
         for vel in q.vels:
-            if vel < q.vel_min: 
+            if vel < q.vel_min:
                 vel = 0
         if q.rot < q.rot_min:
             q.rot = 0
-        
+
 
         # q.vels = [-q.vels[0], +q.vels[1]]
 
         q.rot = radians(10)
         q.rot = radians(0)
-        
+
         strafe_speed = math.sqrt(sum([vel**2 for vel in q.vels]))
         print('strafe_speed', strafe_speed)
         # Determine the four drive power levelsa
@@ -107,14 +107,14 @@ class GamepadControl():
         # offset_angle
         q.vel_angle = radians(q.vel_angle)
         angle = q.vel_angle + math.pi/4
-        
+
         print('angle', degrees(angle))
 
         # FR FL BR BL = vels
         gons = [cos, sin, sin, cos]
         facs = [1, -1, -1, 1]
-        q.vels = [ 
-            strafe_speed * gon(angle) + fac * q.rot 
+        q.vels = [
+            strafe_speed * gon(angle) + fac * q.rot
             for fac, gon in zip(facs, gons)
         ]
         print('vels', q.vels)
@@ -124,12 +124,12 @@ class GamepadControl():
         print('max_scale', max_scale)
         if max_scale > 1.0:
             q.vels = [
-                vel * q.speed_factor / max_scale 
+                vel * q.speed_factor / max_scale
                 for vel in q.vels
             ]
 
-        q.vels = [ 
-            ((abs(vel) - q.vel_min) * q.maxmin_pwr + q.min_pwr) 
+        q.vels = [
+            ((abs(vel) - q.vel_min) * q.maxmin_pwr + q.min_pwr)
             * math.copysign(1, vel) * int(vel != 0)
             for vel in q.vels
         ]
@@ -160,7 +160,7 @@ class GamepadControl():
         q.calc_vels()
         print(q)
         #q.drive.go(q.wheel_vels)
-    
+
 
 class Machine():
     n = 0
@@ -186,20 +186,20 @@ class Machine():
     def on_tim4(q):
         #lambda t:pyb.LED(3).toggle()
         try:
-            n = Machine.n        
+            n = Machine.n
             n = (n + 2) % 2
-    
+
             Machine.leds[n].toggle()
             Machine.n = n
         except TypeError as ex:
             #print(ex.strerror)
             print('error')
-    
-    
+
+
     def __init__(q):
         q.leds = None
 
-        # rf lf rb lb       
+        # rf lf rb lb
         # nam in1, in2, tim_num, tim_ch, tim_pin, dir_en
         drive_config = """
             RF D7 D5 4 1 B6 1
@@ -207,12 +207,16 @@ class Machine():
             RB E0 E1 4 3 B8 1
             LB E2 E3 4 4 B9 1
         """
+
         drive_config = """
-            RF D5 D7 3 1 B4 1
-            LF D1 D3 3 2 B5 1
+            RF D1 D7 3 1 B4 1
+            LF D5 D3 3 2 B5 1
             RB E0 E1 3 3 B0 1
             LB E2 E3 3 4 B1 1
         """
+
+        # D5 D7, D3 D1 - makes the problem reverse - not turning when going both straight or both back
+
         # E0 brown -> red D7 u front
         q.drive_config = drive_config
 
@@ -246,10 +250,10 @@ class Machine():
         q.byte_format = 'utf-8'
         q.pack_format = '<b'
 
-        q.read_buf = bytearray(q.byte_count) 
+        q.read_buf = bytearray(q.byte_count)
         q.i = 0
         q.old_read_buf = bytearray(q.byte_count)
-        
+
         print('Initializing SPI chip select')
         pin_CS_id = 'B12'
         callback = q.on_spi_CS
@@ -261,7 +265,7 @@ class Machine():
         q.ww = list(range(q.byte_count))
 
         return
-    
+
     def hexint(q, b):
         return int(ba.hexlify(b), 16)
 
@@ -275,7 +279,7 @@ class Machine():
                 i+=1
             print('buffer read = ', q.rr, q.read_buf, sep='\t')
             q.leds[3].toggle()
-        except Exception as e: 
+        except Exception as e:
             print('something wrong happened', e)
 
 
@@ -283,27 +287,31 @@ class Machine():
     def init_control(q):
         q.control = ButtonControl()
         q.jcontrol = GamepadControl()
-    
+
 
     def clear_lcds(q):
         for lcd in q.lcds:
             lcd.clear()
 
     def state_changed(q, old_state, state):
-        print(state.name, "= current state")     
+        print(state.name, "= current state")
         if state.name != 'idle':
             print('state_vels =', state.vels)
             for dc in q.drive.dcms:
                 print(dc)
-    
+
     def init_uart(q):
+        """
+        [TX RX], [TX RX]
+        USART 6 = PC6 PC7 ?
+        """
         q.baud = 115200
         q.uart = UART(6, q.baud)
         q.uart.deinit()
         q.uart.init(q.baud, bits=8, parity=None, stop=1,
                 read_buf_len=100, flow=0, timeout=10 )
         q.buf = []
-        
+
         q.joystick = False
 
 
@@ -314,7 +322,7 @@ class Machine():
     def send_nack(q):
         q.uart.write(Act.nok)
         print('sent NACK!')
-    
+
     def uart_process(q, print_got_char=False):
         #print(q.uart)
 
@@ -395,16 +403,16 @@ class Machine():
                 #if q.motors_enabled:
                 #    q.drive.go(state.vels)
                 q.state_changed(*change)
-            
+
             # gamepad stick control
             q.uart_process()
             q.cmd_process()
             if q.motors_enabled:
                 q.drive.go(q.jcontrol.vels)
 
-            if a % 500000 == 0:        
+            if a % 500000 == 0:
                 pass
-                print(state.name, "= current state")            
+                print(state.name, "= current state")
 
             if a == 1000000:
                 print(str(a) + 'cycles')
@@ -423,10 +431,10 @@ class Machine():
             q.leds.append(pyb.LED(i+1))
 
     def init_buttons(q):
-        
+
         sw = pyb.Switch()
         sw.callback(q.on_press)
-        
+
         # sw.callback(lambda:print('press!'))
         pins = ['A' + str(i) for i in range(1, 8, 2)]
 #        pins = ['D' + str(i) for i in range(0, 7, 2)]
@@ -443,7 +451,7 @@ class Machine():
 #        bs.append(lambda x: print(mapper[0], ': line', x))
 #        bs.append(lambda x: print(mapper[1], ': line', x))
 #        bs.append(lambda x: print(mapper[2], ': line', x))
-#        bs.append(lambda x: print(mapper[3], ': line', x))  
+#        bs.append(lambda x: print(mapper[3], ': line', x))
 
         def on_arrow_button(mapped, line):
             shared_globals.move_arrow_pressed = mapped
@@ -461,6 +469,13 @@ class Machine():
         b_callbacks.append(lambda x: on_arrow_button(mapper[2], x))
         b_callbacks.append(lambda x: on_arrow_button(mapper[3], x))
 
+        # late closures
+        # http://docs.python-guide.org/en/latest/writing/gotchas/#late-binding-closures
+        if False:
+            b_callbacks = [
+                lambda x, i=i: on_arrow_button(mapper[i], x)
+                for i in range(4)
+            ]
 
         for i, pin_id in enumerate(pins):
 
@@ -468,23 +483,21 @@ class Machine():
 
             btn = pyb.Pin(pin_id)
 
-            btn_exting = pyb.ExtInt(pin_id, pyb.ExtInt.IRQ_RISING_FALLING, 
+            btn_exting = pyb.ExtInt(pin_id, pyb.ExtInt.IRQ_RISING_FALLING,
                     pyb.Pin.PULL_UP, new_callback)
 
             q.btn_extints.append(btn_exting)
             q.btns.append(btn)
 
-        shared_globals.btns_pressed = [False, False, False, False]        
-        
-        
+        shared_globals.btns_pressed = [False, False, False, False]
 
     def init_i2c(q, bus=2, role=I2C.MASTER, baudrate=115200, self_addr=0x42):
         q.i2c = I2C(bus)
 
         q.addr = self_addr
         q.br = baudrate
-        q.i2c.init(role, addr=q.addr, baudrate=q.br)          
-                
+        q.i2c.init(role, addr=q.addr, baudrate=q.br)
+
         print('I2C initialized: self_addr=0x{0:02X} = {0} dec, br={1}'.\
                 format(q.addr, q.br))
 
@@ -517,14 +530,14 @@ class Machine():
             txt = 'lcd[{}] = {}'.format(lcd_num, ch)
             lcd.disp(txt, 0)
             pyb.delay(300)
-        
+
         q.lcd_a = scan[0]
         print('i2c initialization ended.')
 
     def show_gpio(q):
         print('>> dir(pyb.Pin.board)', dir(pyb.Pin.board))
         print('>> dir(pyb.Pin.cpu)', dir(pyb.Pin.cpu))
-        
+
         try:
             print('>> pins.pins()')
             pins.pins()
