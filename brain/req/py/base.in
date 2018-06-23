@@ -1,3 +1,6 @@
 drawille
 wiringpi2
 
+picamera
+numpy
+cv2
