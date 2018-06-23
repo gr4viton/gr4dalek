@@ -62,14 +62,15 @@ class GamepadControl():
         # from left stick vertical
 
         q.slow_factor = 0.5
-        q.speed_rot_stick_vals = [0,0,0]
         q.slow = False
+        q.speed_rot_stick_vals = [0,0,0]
 
         q.vel_min = 0.05
         q.vel_max = 1
         q.rot_min = 0.05
         q.max_pwr, q.min_pwr = 100, 60
-        q.maxmin_pwr = q.max_pwr-q.min_pwr
+        q.maxmin_pwr = q.max_pwr - q.min_pwr
+        print('max, min, maxmin = ', q.max_pwr, q.min_pwr, q.maxmin_pwr)
         q.vels = [0,0,0,0]
 
     def calc_vels(q):
@@ -79,10 +80,7 @@ class GamepadControl():
         print(rot_val)
         q.rot = rot_val * math.pi / 10
 
-        if q.slow:
-            q.speed_factor = (abs(q.speed_val) + 1)/2
-        else:
-            q.speed_factor = 1
+        q.speed_factor = (abs(speed_val) + 1)/2
 
         print('slow', q.slow)
         print('speed_factor', q.speed_factor)
@@ -128,6 +126,9 @@ class GamepadControl():
                 for vel in q.vels
             ]
 
+        if q.slow:
+            q.vels = [vel * q.slow_factor for vel in q.vels]
+
         q.vels = [
             ((abs(vel) - q.vel_min) * q.maxmin_pwr + q.min_pwr)
             * math.copysign(1, vel) * int(vel != 0)
@@ -169,6 +170,11 @@ class Machine():
     turn_delay = 10
     turn_time = pyb.millis()
     turned = None
+    actions = {
+        Act.gamepad: True,
+        Act.motor_control: False,
+        Act.motor_slow: False,
+    }
 
     def on_press(q):
         print('pressed!')
@@ -195,6 +201,17 @@ class Machine():
             #print(ex.strerror)
             print('error')
 
+    def check_pwm(q):
+        tim_num = 4
+        pin = 'B6'
+        ch = 1
+        freq = 1000
+
+        tim = pyb.Timer(tim_num)
+        tim.init(freq=freq)
+        tpin = pyb.Pin(pin)
+        tim.channel(ch, pyb.timer.PWM, pin=tpin)
+        tim.pulse_width_percent(50)
 
     def __init__(q):
         q.leds = None
@@ -215,12 +232,14 @@ class Machine():
             LB E2 E3 3 4 B1 1
         """
 
+        q.check_pwm()
+
         # D5 D7, D3 D1 - makes the problem reverse - not turning when going both straight or both back
 
         # E0 brown -> red D7 u front
         q.drive_config = drive_config
 
-        q.motors_enabled = False
+        q.actions[Act.motor_control] = False
 
 #        q.show_gpio()
 #        q.init_spi()
@@ -312,9 +331,6 @@ class Machine():
                 read_buf_len=100, flow=0, timeout=10 )
         q.buf = []
 
-        q.joystick = False
-
-
     def send_ack(q):
         q.uart.write(Act.ok)
         print('sent ACK!')
@@ -358,9 +374,15 @@ class Machine():
                     q.send_nack()
                     q.cmd = None
 
+    def set_action_state(q, action_key, state):
+        q.actions[action_key] = state
+        print('{act} initialized to {state}'.format(
+            act=action_key, state=state
+        ))
+        print(q.actions)
+
     def cmd_process(q):
         if q.cmd:
-            q.joystick = True
 
             action = None
             if Act.turn_on in q.cmd:
@@ -371,18 +393,23 @@ class Machine():
                 action = False
 
             if action is not None:
-                if Act.gamepad in q.cmd:
-                    q.joystick = action
-                    print('joystick control initialized to ', action)
-                elif Act.motor_control in q.cmd:
-                    q.motors_enabled = action
-                    print('motor control initialized to ', action)
-                    if not q.motors_enabled:
-                        q.drive.stop()
+                found = False
+                for action_key in q.actions.keys():
+                    if action_key in q.cmd:
+                        q.set_action_state(action_key, action)
+                        found = True
+                #if not q.actions[Act.motor_control]:
+                    #print('Stopped motors, cause motor_control is off.')
+ #                   q.drive.stop()
+
+                if not found:
+                    print('No known action found for action_key = {act}'.format(
+                        act=q.cmd))
+
             else:
-                if q.joystick:
+                if q.actions[Act.gamepad]:
                     q.jcontrol.process_stick_cmd(q.cmd)
-                    pass
+                    q.jcontrol.slow = q.actions[Act.motor_slow]
 
 
     def main_loop(q):
@@ -400,14 +427,14 @@ class Machine():
             change = q.control.querry_state()
             state = q.control.state
             if change is not None:
-                #if q.motors_enabled:
+                #if q.motor_control:
                 #    q.drive.go(state.vels)
                 q.state_changed(*change)
 
             # gamepad stick control
             q.uart_process()
             q.cmd_process()
-            if q.motors_enabled:
+            if q.actions[Act.motor_control]:
                 q.drive.go(q.jcontrol.vels)
 
             if a % 500000 == 0:

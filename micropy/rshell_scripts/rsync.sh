@@ -5,5 +5,5 @@ echo Removing *.swp and *.swo from /flash
 rm /flash/*.swp
 rm /flash/*.swo
 rm /flash/__pycache__
-rm /flash/a.py
 echo Done
+sleep 1

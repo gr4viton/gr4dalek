@@ -13,14 +13,14 @@ Connections are:
 import sys
 # import spidev
 
-from struct import unpack, pack
+# from struct import unpack, pack
 from cli_gui import DirectionView
 from gamepad_control import GamePadControler as GPC
 
 # import wiringpi as wp
 
 from stmcom import StmCom
-sys.path.append("/home/pi/DEV/gr4dalek/micropy/src")
+# sys.path.append("/home/pi/DEV/gr4dalek/micropy/src")  # not functional
 
 from actions import Actions as Act
 
@@ -79,6 +79,12 @@ class DalekRPi():
             if a_chng:
                 fdata = [0, 0, 0]
                 [self.com.write_pot_uart(name, fdata) for name in stick_names]
+
+            if self.btn('B').changed_down:
+                self.com.start(Act.motor_slow)
+            if self.btn('X').changed_down:
+                self.com.stop(Act.motor_slow)
+
                 # self.com.send_data('HEY!')
 
             abbs = 'up down left right'.split()
@@ -97,6 +103,12 @@ class DalekRPi():
 
             if self.btn('R1').changed_down:
                 self.com.stop(Act.motor_control)
+
+            if self.btn('L2').changed_down:
+                self.com.start(Act.motor_slow)
+
+            if self.btn('R2').changed_down:
+                self.com.stop(Act.motor_slow)
 
             for name, dv in zip(stick_names, stick_dvs):
                 fdata, changed = self.gpc.btns[name].fdata_changed

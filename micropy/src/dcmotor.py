@@ -85,7 +85,6 @@ class DCMotor():
 
         q.set_in = [None, None]
 
-
     def vel(q, vel=0, info=True):
         if vel < -100:
             vel = -100
@@ -102,7 +101,8 @@ class DCMotor():
             elif vel < 0:
                 to_set_in = [0, 1]
             if vel != q.velocity:
-                q.en.pulse_width_percent(abs(vel))
+                # q.en.pulse_width_percent(abs(vel))
+                q.en.duty(abs(vel))
                 print(vel)
                 print(abs(vel))
                 if info:
