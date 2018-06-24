@@ -1,6 +1,6 @@
 # ~/.tmuxinator/dev.yml
-name: dalek_telepresence
-root: /srv/dd/gr4dalek/telepresence
+name: dalek_telepins
+root: /srv/dd/gr4dalek/telepins
 
 #pre: lunchy restart postgresql
 on_project_start: 
@@ -18,10 +18,10 @@ windows:
         # - vim ../log.log
   - editor:
       #layout: 676c,149x33,0,0[149x21,0,0{74x21,0,0,0,74x21,75,0,6},149x12,0,22,7]
-    - cd dd/telepresence
+    - cd dd/telepins
     - vim -O app.py static/style.css templates/index.html
   - python:
-    - pipenv shell "cd dd/telepresence; pwd; ls"
+    - pipenv shell "cd dd/telepins; pwd; ls"
   - pipenv:
     - . /srv/dd/gr4dalek/script/.bashrc 
     - vim req/py/base.in
