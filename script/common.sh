@@ -8,7 +8,8 @@ pipenv_install () {
     proj_path="$DALEK_BASE$1/"
     cd $proj_path
     pwd
-    echo "starting to install $1 subproject via pipenv - this can take some time"
-    echo "using requirements from $proj_path$DALEK_REQ"
+    echo ">> using these requirements from $proj_path$DALEK_REQ"
+    cat $proj_path$DALEK_REQ
+    echo ">> starting to install $1 subproject via pipenv - this can take some time"
     pipenv install --three -r $proj_path$DALEK_REQ
 }

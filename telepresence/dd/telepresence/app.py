@@ -3,7 +3,7 @@ from flask import Flask, render_template, Response, request
 import datetime
 import time
 
-from camera import Camera 
+from camera import Camera
 from nocache import nocache
 
 import requests
@@ -11,7 +11,7 @@ import requests
 
 try:
     import RPi.GPIO as GPIO
-except RuntimeError:
+except ImportError:
     print("Error importing RPi.GPIO!  This is probably because you need superuser privileges.  You can achieve this by using 'sudo' to run your script")
 
 
@@ -35,7 +35,7 @@ def gen(camera):
 @app.route('/video_feed')
 @nocache
 def video_feed():
-    return Response(gen(Camera()), 
+    return Response(gen(Camera()),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -58,7 +58,7 @@ def index():
     if action is None:
         action = ''
     if action=='snapshot':
-        return Response(gen(Camera()), 
+        return Response(gen(Camera()),
                         mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
@@ -102,10 +102,7 @@ def readPin(pin):
         'response' : response
     }
 
-    return render_template('pin.html', **templateData)  
-
-
-
+    return render_template('pin.html', **templateData)
 
 
 

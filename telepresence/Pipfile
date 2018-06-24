@@ -12,6 +12,8 @@ name = "pypi"
 [packages]
 
 Flask = "*"
+request = "*"
+requests = "*"
 
 
 [requires]
