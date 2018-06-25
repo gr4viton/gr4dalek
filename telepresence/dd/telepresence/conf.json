@@ -1,0 +1,17 @@
+{
+	"show_video": false,
+	"use_dropbox": false,
+	"dropbox_key": "YOUR_DROPBOX_KEY",
+	"dropbox_secret": "YOUR_DROPBOX_SECRET",
+	"dropbox_base_path": "YOUR_DROPBOX_APP_PATH",
+    "use_email": true,
+    "email_address": ["your email address"],
+	"min_upload_seconds": 0.5,
+	"min_motion_frames": 8,
+	"camera_warmup_time": 10,
+	"delta_thresh": 5,
+	"blur_size": [21, 21], 
+	"resolution": [640, 480],
+	"fps": 16,
+	"min_area": 5000
+}

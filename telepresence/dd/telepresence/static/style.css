@@ -1,0 +1,28 @@
+/*
+body {
+background: black;
+    color: green;
+}
+*/
+
+* {
+/*    font-size: 80%; */
+    font-family: Consolas, monaco, monospace;
+}
+
+.bg
+{
+    position: absolute;
+    width: 100%;
+    z-index: 0;
+}
+
+
+.content
+{
+	margin: 0 auto;
+	position: relative;
+	width: 500px;
+	z-index: 999;
+}
+

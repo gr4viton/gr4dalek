@@ -64,3 +64,8 @@ alias mux_telepresence="src_dalek; mux start $prefix""telepresence"
 alias mux_telepresence_stop="echo 'stopping mux'; mux stop $prefix""telepresence"
 alias mux_telepresence_re="mux_telepresence_stop; mux_telepresence"
 alias mux_telepresence_debug="mux debug $prefix""telepresence"
+
+
+
+STILL_IMG="/home/pi/stream/still.jpg"
+alias raspi_still="raspistill -o $STILL_IMG"

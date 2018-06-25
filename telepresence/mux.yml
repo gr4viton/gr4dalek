@@ -1,0 +1,40 @@
+# ~/.tmuxinator/dev.yml
+name: dalek_telepresence
+root: /srv/dd/gr4dalek/telepresence
+
+#pre: lunchy restart postgresql
+on_project_start: 
+  - echo "START"
+  - echo "this" >> /srv/dd/gr4dalek/log.log
+  - . /srv/dd/gr4dalek/script/.bashrc 
+
+#pre_window: rbenv shell 2.0.0-p247
+windows:
+  - mux:
+      layout: horizontal  
+      panes:
+        - vim -O mux.yml script/.bashrc
+          #        - . /srv/dd/gr4dalek/script/.bashrc 
+        # - vim ../log.log
+  - editor:
+      #layout: 676c,149x33,0,0[149x21,0,0{74x21,0,0,0,74x21,75,0,6},149x12,0,22,7]
+      layout: 9a4f,273x67,0,0[273x53,0,0,41,273x14,0,54,46]
+      panes:
+        - cd dd/telepresence; vim -O app.py utils.py templates/index.html
+        - pipenv shell "cd dd/telepresence; pwd; ls"
+  - log:
+    - tail ../log.log -f
+  - pipenv:
+    - . /srv/dd/gr4dalek/script/.bashrc 
+    - vim req/py/base.in
+  - bashrc:
+    - vim -O ../script/.bashrc ../script/common.sh
+  - git:
+      layout: main-vertical  
+      panes:
+        - gls
+        - vim req/py/base.in
+  - stream:
+      - cd /home/pi/stream/
+      - pwd
+      - ls
