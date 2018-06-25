@@ -60,11 +60,25 @@ copy_all_mux () {
 copy_all_mux
 
 prefix='dalek_'
-alias mux_telepresence="src_dalek; mux start $prefix""telepresence"
-alias mux_telepresence_stop="echo 'stopping mux'; mux stop $prefix""telepresence"
-alias mux_telepresence_re="mux_telepresence_stop; mux_telepresence"
-alias mux_telepresence_debug="mux debug $prefix""telepresence"
+_muxdalek_start () {
+    full=$prefix$1
+    src_dalek
+    mux start $full
+}
+_muxdalek_stop () {
+    full=$prefix$1
+    echo "stopping $full"
+    mux stop $full
+}
+_muxdalek_re () {
+    _muxdalek_stop $1
+    _muxdalek_start $1
+}
 
+alias mux_tpr='_muxdalek_start telepresence'
+alias mux_tpr_re='_muxdalek_re telepresence'
+alias mux_brain='_muxdalek_start brain'
+alias mux_brain_re='_muxdalek_re brain'
 
 
 STILL_IMG="/home/pi/stream/still.jpg"
