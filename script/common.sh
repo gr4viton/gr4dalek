@@ -11,5 +11,5 @@ pipenv_install () {
     echo ">> using these requirements from $proj_path$DALEK_REQ"
     cat $proj_path$DALEK_REQ
     echo ">> starting to install $1 subproject via pipenv - this can take some time"
-    pipenv install --three -r $proj_path$DALEK_REQ
+    pipenv install --skip-lock --three -r $proj_path$DALEK_REQ
 }

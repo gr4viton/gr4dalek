@@ -1,3 +1,4 @@
+#!/bin/bash
 # aliases and functions for this subproject
 
 . $DALEK_COMMON_RC
@@ -16,3 +17,5 @@ create_cv2_link () {
     echo "creating symbolic link of $lib_path in $venv_lib_path"
     ln -s $lib_path $venv_lib_path
 }
+
+export -f create_cv2_link

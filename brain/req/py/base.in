@@ -1,7 +1,8 @@
 drawille
 wiringpi2
+
+requests
 flask
 
 picamera
 numpy
-cv2
