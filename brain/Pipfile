@@ -1,23 +1,24 @@
 [[source]]
 
-url = "https://pypi.python.org/simple"
 verify_ssl = true
+url = "https://pypi.python.org/simple"
 name = "pypi"
-
-
-[dev-packages]
-
-pudb = "*"
-pytest = "*"
 
 
 [packages]
 
 drawille = "*"
-wiringpi = "*"
 "wiringpi2" = "*"
-picamera = "*"
-numpy = "*"
-"cv2" = "*"
 requests = "*"
 Flask = "*"
+picamera = "*"
+numpy = "*"
+
+
+[requires]
+
+python_version = "3.4"
+
+
+[dev-packages]
+

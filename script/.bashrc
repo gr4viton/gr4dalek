@@ -11,6 +11,7 @@ pipenv_install_tpr () {
     pipenv_install telepresence
 }
 pipenv_install_brain () {
+    echo "if the pipenv install is skipped the `create_cv2_link` must be called manually!"
     pipenv_install brain
     create_cv2_link
 }
