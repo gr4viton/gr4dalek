@@ -8,9 +8,10 @@ from cam2 import Camera as cam_mine
 
 # from dd.brain.settings import logging
 from settings import logging
+import arrow
 
 
-class Streamer:
+class FlaskWeb:
     app = Flask(__name__)  # , template_folder='templates')
     stream = None
     camera = None
@@ -21,53 +22,82 @@ class Streamer:
         return render_template('streaming.html')
 
     @staticmethod
+    @app.route("/status", methods=['GET', 'POST'])
+    def status():
+        cam = FlaskWeb.camera
+        tim = arrow.utcnow()
+        dict_ = {
+            'running': cam.running,
+            'frame_count': cam.frame_count,
+            'time': str(tim),
+        }
+
+        txt = str(dict_)
+        return txt
+
+    @staticmethod
+    @app.route("/test", methods=['GET', 'POST'])
+    def test():
+        # return "You always saw the good in the world."
+        cam = FlaskWeb.camera
+        txt = str(cam.frame.size)
+        return txt
+
+    @staticmethod
     def gen():
+        camera = FlaskWeb.camera
         while True:
-            frame = Streamer.camera.get_frame()
-            yield (
-                b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n'
-            )
+            if camera.running:
+                # print(camera.frame_count)
+                camera._update_frame()
+                # if camera.frame_count % 25 == 1:
+                if True:
+                    frame = camera.last_frame_bytes()
+                    yield (
+                        b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n'
+                    )
 
     @staticmethod
     @app.route('/video_feed')
     def video_feed():
         return Response(
-            Streamer.gen(),
+            FlaskWeb.gen(),
             mimetype='multipart/x-mixed-replace; boundary=frame'
         )
 
     @staticmethod
     def start(camera_type='pi'):
-        if camera_type == 'pi':
-            cam = cam_orig
-            cam = cam_mine
-            # cam = cam_here
 
         from hw.camera.stream.config import default_config
         config = default_config
         config.type = 'cv'
         config.type = 'pi'
 
-        Streamer.camera = cam
+        from hw.camera.stream.selector import VideoStreamSelector
+        video_stream = VideoStreamSelector.from_config(config)
+
+        FlaskWeb.camera = video_stream
         logging.info('call flask process')
-        Streamer.stream = Process(
-            target=Streamer.app.run,
+        FlaskWeb.process = Process(
+            target=FlaskWeb.app.run,
             args=('0.0.0.0', 5000),
             # kwargs={'debug': False},  # imutils does not work with debug
         )
-        logging.info('call set_stream')
-        Streamer.camera.set_stream(config)
+        # logging.info('call set_stream')
+        # FlaskWeb.camera.start_thread()
 
-        logging.info('call stream start - starts the thread with update loop')
-        Streamer.stream.start()
+        logging.info('start flask process')
+        FlaskWeb.process.start()
 
     @staticmethod
     def shutdown():
-        if Streamer.stream:
-            Streamer.stream.terminate()
-            Streamer.stream.join()
-            Streamer.stream = None
+        if FlaskWeb.process:
+            FlaskWeb.camera.release()
+
+            FlaskWeb.process.terminate()
+            FlaskWeb.process.join()
+            FlaskWeb.process = None
             return True
         else:
             return False
@@ -75,6 +105,6 @@ class Streamer:
 
 
 if __name__ == '__main__':
-    # Streamer.start()
-    # Streamer.start('module')
-    Streamer.start('pi')
+    # FlaskWeb.start()
+    # FlaskWeb.start('module')
+    FlaskWeb.start('pi')

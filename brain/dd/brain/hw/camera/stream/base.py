@@ -1,6 +1,8 @@
 from threading import Thread
 from settings import logging
+import cv2
 
+import arrow
 
 class VideoStreamBase(object):
 
@@ -8,6 +10,7 @@ class VideoStreamBase(object):
         self.config = config
         self.running = False
         self.frame_count = 0
+        self.fps_start = None
 
         self._pre_config(config)
         self._base_start_stream()
@@ -26,14 +29,26 @@ class VideoStreamBase(object):
     def _base_start_stream(self):
         """Start camera stream after its _pre_config."""
         logging.info('> start stream')
-        self.running = True
         self._start_stream()
+        self.running = True
 
     def set_frame(self, frame):
         self.frame = frame
         self.frame_count += 1
-        if self.frame_count % 25 == 0:
-            logging.info('frame_count = {fc}'.format(fc=self.frame_count))
+        if self.fps_start is None:
+            self.fps_start = arrow.utcnow()
+        else:
+            now = arrow.utcnow()
+            dif = now - self.fps_start
+            dif_sec = dif.total_seconds()
+            if dif_sec > 1:
+                fps = self._get_fps(dif_sec)
+                logging.info('{fps:.2f} FPS'.format(fps=fps))
+                self.fps_start = arrow.utcnow()
+                self.frame_count = 0
+
+    def _get_fps(self, dif):
+        return self.frame_count / dif
 
     @property
     def stopped(self):
@@ -54,19 +69,38 @@ class VideoStreamBase(object):
         """Configure camera after stream start."""
         pass
 
-    def start(self):
+    def start_thread(self):
         """Start the thread to read frames from the video stream."""
-        t = Thread(target=self.update, name=self.name, args=())
-        t.daemon = True
-        t.start()
+        thr = Thread(target=self.update, name=self.name, args=())
+        # thr.daemon = True
+        thr.start()
+        self.thread = thr
 
-    def update(self):
+    def update_loop(self):
         """Function to run in separate thread which updates the self.fram with actual camera capture."""
-        self._update()
+        while self.running:
+            self._update_frame()
+        self.release()
 
-    def get_frame(self):
-        print('get frame called - return frame of size = {siz}'.format(siz=self.frame.size))
+    @property
+    def last_frame(self):
         return self.frame
+        if self.frame is not None:
+            logging.info('last_frame called - return frame of size = {siz}'.format(siz=self.frame.size))
+        else:
+            logging.info('frame None')
+        return self.frame
+
+    def last_frame_bytes(self):
+        frame = self.last_frame
+        # frame = imutils.resize(frame, width=600)
+
+        if frame is None:
+            logging.info('frame is None')
+            return b'0'
+        ret2, jpeg = cv2.imencode('.jpg', frame)
+        byts = jpeg.tobytes()
+        return byts
 
     def read(self):
         return self.get_frame()

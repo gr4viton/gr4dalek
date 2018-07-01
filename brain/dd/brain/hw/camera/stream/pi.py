@@ -35,24 +35,25 @@ class VideoStreamPi(VideoStreamBase):
             use_video_port=True
         )
 
-    def _update(self):
-        # keep looping infinitely until the thread is stopped
+    def _update_frame(self):
+        logging.info(dir(self.stream))
 
-        while self.running:
-            for picamera_frame in self.stream:
-                # grab the frame from the stream and clear the stream in
-                # preparation for the next frame
-                frame = picamera_frame.array
-                self.set_frame(frame)
+        picamera_frame = self.stream.gi_frame
+        frame = picamera_frame.array
+        self.set_frame(frame)
+        self.rawCapture.truncate(0)
+        return
 
-                self.rawCapture.truncate(0)
+        for picamera_frame in self.stream:
+            # grab the frame from the stream
+            # clear the stream in preparation for the next frame
+            frame = picamera_frame.array
+            self.set_frame(frame)
 
-                # if the thread indicator variable is set, stop the thread
-                # and resource camera resources
-                #if not self.running:
-        logging.info('ending the update loop')
+            self.rawCapture.truncate(0)
+            break
 
+    def release(self):
         self.stream.close()
         self.rawCapture.close()
         self.camera.close()
-        return

@@ -19,7 +19,7 @@ class Camera:
 
             # Camera.cap = VideoStream(usePiCamera=True).start()
             logging.info('select video stream')
-            video_stream = VideoStreamSelector.from_config()
+            video_stream = VideoStreamSelector.from_config(config)
             Camera.cap = video_stream
             Camera.cap.start()
             time.sleep(2)

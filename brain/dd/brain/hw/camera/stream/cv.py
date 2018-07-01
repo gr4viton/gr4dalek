@@ -1,6 +1,7 @@
 from .base import VideoStreamBase
 from .cv_options import VideoCaptureProperty as prop
 import cv2
+from settings import logging
 
 
 class VideoStreamCV(VideoStreamBase):
@@ -17,6 +18,10 @@ class VideoStreamCV(VideoStreamBase):
 
     def _start_stream(self):
         self.stream = cv2.VideoCapture(self.source_number)
+        import time
+        logging.info('sleep for sec for stream init to happen')
+        time.sleep(1)
+        self._update_frame()
         (self.grabbed, self.frame) = self.stream.read()
 
     def _post_config(self, config):
@@ -30,9 +35,9 @@ class VideoStreamCV(VideoStreamBase):
         if config_value is not None:
             self.stream.set(prop_id, config_value)
 
-    def _update(self):
-        while self.running:
-            self.grabbed, frame = self.stream.read()
-            self.set_frame(frame)
+    def _update_frame(self):
+        self.grabbed, frame = self.stream.read()
+        self.set_frame(frame)
 
+    def release(self):
         self.stream.release()
