@@ -9,9 +9,13 @@ class VideoStreamConfig:
     height = attrib()
     framerate = attrib(default=None)
 
+    name = attrib(default='video_stream')
+
     flip_horizontal = attrib(default=False)
     flip_vertical = attrib(default=False)
     rotate_cw_muliplier = attrib(default=0)
+
+    source_number = attrib(default=0)
 
     @property
     def resolution(self):

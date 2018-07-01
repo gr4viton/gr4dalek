@@ -3,10 +3,6 @@ from enum import Enum
 
 
 class OpenCVEnum(Enum):
-    pass
-
-
-class VideoCaptureProperty(Enum):
 
     def __init__(self):
         prefix = 'CAP_PROP'
@@ -23,4 +19,10 @@ class VideoCaptureProperty(Enum):
             enum_name = enum_map[value]
             setattr(self, enum_name, value)
 
-        super(VideoCaptureProperty, self).__init__()
+        args = enum_name
+        super(VideoCaptureProperty, self).__init__(*args)
+
+
+class VideoCaptureProperty(Enum):
+    width = 3
+    height = 4

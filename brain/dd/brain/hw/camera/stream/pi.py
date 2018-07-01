@@ -1,6 +1,7 @@
 from .base import VideoStreamBase
 from picamera.array import PiRGBArray
 from picamera import PiCamera
+from settings import logging
 
 
 class VideoStreamPi(VideoStreamBase):
@@ -17,12 +18,15 @@ class VideoStreamPi(VideoStreamBase):
 
         args = ['resolution', 'framerate']
         for arg in args:
-            value = getattr(config, arg)
-            if value is not None:
-                setattr(self.camera, arg, value)
+            self._set_stream_property(arg)
 
         self.rawCapture = PiRGBArray(self.camera, size=config.resolution)
         self.frame = None
+
+    def _set_stream_property(self, prop_name):
+        config_value = getattr(self.config, prop_name)
+        if config_value is not None:
+            setattr(self.camera, prop_name, config_value)
 
     def _start_stream(self):
         self.stream = self.camera.capture_continuous(
@@ -33,16 +37,22 @@ class VideoStreamPi(VideoStreamBase):
 
     def _update(self):
         # keep looping infinitely until the thread is stopped
-        for f in self.stream:
-            # grab the frame from the stream and clear the stream in
-            # preparation for the next frame
-            self.frame = f.array
-            self.rawCapture.truncate(0)
 
-            # if the thread indicator variable is set, stop the thread
-            # and resource camera resources
-            if not self.running:
-                self.stream.close()
-                self.rawCapture.close()
-                self.camera.close()
-                return
+        while self.running:
+            for picamera_frame in self.stream:
+                # grab the frame from the stream and clear the stream in
+                # preparation for the next frame
+                frame = picamera_frame.array
+                self.set_frame(frame)
+
+                self.rawCapture.truncate(0)
+
+                # if the thread indicator variable is set, stop the thread
+                # and resource camera resources
+                #if not self.running:
+        logging.info('ending the update loop')
+
+        self.stream.close()
+        self.rawCapture.close()
+        self.camera.close()
+        return

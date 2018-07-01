@@ -20,7 +20,7 @@ windows:
       #layout: 676c,149x33,0,0[149x21,0,0{74x21,0,0,0,74x21,75,0,6},149x12,0,22,7]
       layout: 9a4f,273x67,0,0[273x53,0,0,41,273x14,0,54,46]
       panes:
-        - cd dd/brain; vim -O main.py
+        - cd dd/brain; vim -O app.py hw/camera/stream/base.py hw/camera/stream/pi.py cam0.py
         - pipenv shell "cd dd/brain; pwd; ls"
   - log:
     - tail ../log.log -f

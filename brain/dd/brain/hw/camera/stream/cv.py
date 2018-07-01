@@ -16,20 +16,23 @@ class VideoStreamCV(VideoStreamBase):
         return self.config.source_number
 
     def _start_stream(self):
-        self.stream = cv2.VideoCapture(self.source_nunmber)
+        self.stream = cv2.VideoCapture(self.source_number)
         (self.grabbed, self.frame) = self.stream.read()
 
     def _post_config(self, config):
-        self.stream.set(prop.width, config.width)
-        self.stream.set(prop.height, config.height)
+        args = ['width', 'height']
+        for arg in args:
+            self._set_stream_property(arg)
+
+    def _set_stream_property(self, prop_name):
+        prop_id = getattr(prop, prop_name).value
+        config_value = getattr(self.config, prop_name)
+        if config_value is not None:
+            self.stream.set(prop_id, config_value)
 
     def _update(self):
-        # keep looping infinitely until the thread is stopped
-        while True:
-            # if the thread indicator variable is set, stop the thread
-            if not self.running:
-                self.stream.release()
-                return
+        while self.running:
+            self.grabbed, frame = self.stream.read()
+            self.set_frame(frame)
 
-            # otherwise, read the next frame from the stream
-            self.grabbed, self.frame = self.stream.read()
+        self.stream.release()
